@@ -1630,7 +1630,9 @@ output$References <- renderText({
         <br><br>
 
         <strong><font size=\"4\">Tutorial:</font></strong>
-        Coming soon.<br><br>
+        <a href=\"http://bioconductor.org/packages/release/bioc/vignettes/Prostar/inst/doc/Prostar_Tutorial.pdf\"
+                                title=\"here\" target=\"_blank\">here</a>
+        <br><br>
 
         <strong><font size=\"4\">Contact:</font></strong><br>
         If you need any help, but also if you wish to make comments 
