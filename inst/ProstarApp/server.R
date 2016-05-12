@@ -7,6 +7,7 @@ library(rhandsontable)
 library(data.table)
 library(reshape2)
 library(DT)
+library(MSnbase)
 
 
 # initialize data with colnames
