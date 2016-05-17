@@ -564,10 +564,10 @@ tabPanel(title = "2 - Configure protein dataset",
     )
 )
 
-),
+)
 
 
-tabPanel("Differential analysis",
+,tabPanel("Differential analysis",
     tabsetPanel(
         title = "diffAnalysis_tabSetPanel",
         id = "diffAnalysis_tabSetPanel",
@@ -581,9 +581,9 @@ tabPanel("Differential analysis",
                     ,uiOutput("diffAnalysis_sidebarPanelTab1")
                     ),
                 conditionalPanel(id = "wellPanel_DifferentialAnalysisTab1",
-                    condition = TRUE,
-                    uiOutput("nbSelectedItems"),
-                    plotOutput("volcanoplot", height="500px", width="600px")
+                    condition =  "true"
+                    ,uiOutput("nbSelectedItems")
+                    ,plotOutput("volcanoplot", height="500px", width="600px")
                 )
             )
         ),
@@ -597,7 +597,7 @@ tabPanel("Differential analysis",
                     ,uiOutput("diffAnalysis_sidebarPanelTab2")
                 ),
                 conditionalPanel(id = "wellPanel_DifferentialAnalysisTab2",
-                    condition = TRUE,
+                    condition =  "true",
                     htmlOutput("errMsgCalibrationPlotAll"),
                     busyIndicator("Calculation In progress",wait = 0),
                     plotOutput("calibrationPlotAll"),

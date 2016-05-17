@@ -56,7 +56,8 @@ rv <- reactiveValues(
     commandLog = NULL, 
     normalizationFamily = NULL,
     normalizationMethod = NULL, 
-    matAdj = NULL)
+    matAdj = NULL, 
+    resAnaDiff = list(logFC=NULL, P.Value=NULL))
 
 env <- environment()
 
@@ -139,7 +140,7 @@ output$diffAnalysis_sidebarPanelTab1 <- renderUI({
                     uiOutput("RenderLimmaCond1"),
                     uiOutput("RenderLimmaCond2"),
                     selectInput("diffAnaMethod","Choose the statistical test",
-                                choices = c("None","Limma", "Welch"),
+                                choices = c("Limma", "Welch"),
                                 selected = method),
                     numericInput("seuilLogFC", "Define log(FC) threshold",
                                 min = 0,value = threshold.logFC,step=0.1),
@@ -489,15 +490,19 @@ RunAggregation <- reactive({
 })
 
 ########################################################
-RunDiffAna <- reactive({
+observe({
     input$diffAnaMethod
     rv$current.obj
     input$condition1
     input$condition2
+    if (is.null(input$diffAnaMethod)) {return (NULL)}
+    if (is.null(rv$current.obj)) {return (NULL)}
+    if (is.null(input$condition1)) {return (NULL)}
+    if (is.null(input$condition2)) {return (NULL)}
     
     data <- NULL
     
-    
+    isolate({
     result = tryCatch(
     {
         writeToCommandLogFile(paste("cond1 <- '", input$condition1, "'", sep=""))
@@ -505,7 +510,7 @@ RunDiffAna <- reactive({
         writeToCommandLogFile(paste("method <- '", input$diffAnaMethod, "'", sep=""))
         
         if (input$diffAnaMethod == "Limma"){
-        data <- wrapper.diffAnaLimma(rv$current.obj, 
+            rv$resAnaDiff <- wrapper.diffAnaLimma(rv$current.obj, 
                                     input$condition1, 
                                     input$condition2)
         writeToCommandLogFile(
@@ -513,7 +518,7 @@ RunDiffAna <- reactive({
             )
         
         } else if (input$diffAnaMethod == "Welch"){
-        data <- wrapper.diffAnaWelch(rv$current.obj, 
+            rv$resAnaDiff <- wrapper.diffAnaWelch(rv$current.obj, 
                                     input$condition1, 
                                     input$condition2)
         writeToCommandLogFile(
@@ -524,14 +529,16 @@ RunDiffAna <- reactive({
     , warning = function(w) {
         shinyjs::info(w)
     }, error = function(e) {
-        shinyjs::info(e)
+        shinyjs::info(paste("527",e))
     }, finally = {
         #cleanup-code
         
     }
     
 )
-    return(data)
+    
+    })
+
 })
 
 
@@ -625,6 +632,17 @@ observe({
         rv$current.obj.name <- DeleteFileExtension(input$file$name)
         rv$typeOfDataset <- rv$current.obj@experimentData@other$typeOfData
         
+        
+        #Si on a deja des pVal, alors, ne pas recalculer 
+        if ("logFC" %in% names(Biobase::fData(rv$current.obj) )){
+            rv$resAnaDiff <- list(logFC = Biobase::fData(rv$current.obj)$logFC,
+                                 P.Value = Biobase::fData(rv$current.obj)$P.Value)
+            rv$seuilLogFC <- rv$currentObjexperimentData@other$threshold.logFC
+            rv$seuilPVal<- rv$currentObj@experimentData@other$threshold.p.value
+            
+    }
+
+                           
         writeToCommandLogFile(
             paste("current.obj <- readRDS('",
                                 input$file$name,
@@ -694,7 +712,6 @@ observe({
     ##concatenation des informations
     #mat <- ComputeAdjacencyMatrix()
     m <- NULL
-    print("m = NULL")
     if (input$checkSharedPeptides){ 
         m <- rv$matAdj$matWithSharedPeptides
        # writeToCommandLogFile("m <- mat$matWithSharedPeptides")
@@ -702,7 +719,6 @@ observe({
     #writeToCommandLogFile("m <- mat$matWithUniquePeptides")
     }
         
-    print(m[1:10, 1:10])
     
     for(c in input$columnsForProteinDataset.box){
         newCol <- BuildColumnToProteinDataset(fData(rv$current.obj), m, c)
@@ -712,7 +728,6 @@ observe({
         colnames(fData(rv$temp.aggregate)) <- c(cnames, c)
     }
     
-    print("apres")
     rv$current.obj <- rv$temp.aggregate
     rv$typeOfDataset <-rv$current.obj@experimentData@other$typeOfData
     name <- paste ("Aggregated", " - ", rv$typeOfDataset, sep="")
@@ -798,11 +813,12 @@ output$showFDR <- renderText({
     rv$seuilLogFC
     input$numericValCalibration
     input$calibrationMethod
-    
+    rv$resAnaDiff
     
     if (is.null(input$diffAnaMethod) || (input$diffAnaMethod == "None")) 
     {return(NULL)}
     if (is.null(rv$current.obj)) {return(NULL)}
+    if (is.null(rv$resAnaDiff$logFC)) {return(NULL)}
     if (is.null(input$condition1) || is.null(input$condition2) ) 
     {return(NULL)}
     if (is.null(rv$seuilLogFC) ||is.na(rv$seuilLogFC)  ) 
@@ -813,49 +829,47 @@ output$showFDR <- renderText({
     if ((input$condition1 == input$condition2)) {return(NULL)}
     
     isolate({
-    rv$current.obj
-    
-    if (  !(("logFC" %in% names(rv$current.obj@experimentData@other) ) && 
-            ("P.Value"  %in% names(rv$current.obj@experimentData@other))))
-    {
-        data <- RunDiffAna()
-        if (is.null(data)) {return (NULL)}
+   
         m <- NULL
         if (input$calibrationMethod == "Benjamini-Hochberg") { m <- 1}
         else if (input$calibrationMethod == "numeric value") {
             m <- input$numericValCalibration} 
         else {m <- input$calibrationMethod }
         
-        fdr <- diffAnaComputeFDR(data, rv$seuilPVal, rv$seuilLogFC, m)
+        fdr <- diffAnaComputeFDR(rv$resAnaDiff, rv$seuilPVal, rv$seuilLogFC, m)
         HTML(paste("<h4>FDR = ", round(100*fdr, digits=2)," % </h4>", sep=""))
-    }
+
     })
 })
 
 
-
-output$histPValue <- renderPlot({
-    
-    if (is.null(rv$seuilPVal) ||
-        is.null(rv$seuilLogFC) ||
-        is.null(input$diffAnaMethod)
-    ) {return(NULL)}
-    if (input$condition1 == input$condition2) {return(NULL)}
-    
-    t <- NULL
-    # Si on a deja des pVal, alors, ne pas recalculer avec ComputeWithLimma
-    if (isContainedIn(c("logFC","P.Value"),names(fData(rv$current.obj)) ) ){
-    t <- fData(rv$current.obj)[,"P.Value"]
-    } else{
-    data <- RunDiffAna()
-    if (is.null(data)) {return (NULL)}
-    t <- data$P.Value
-    }
-    
-    
-    hist(sort(1-t), breaks=80, col="grey")
-    
-})
+# 
+# output$histPValue <- renderPlot({
+#     rv$resAndaDiff
+#     rv$seuilPVal
+#     rv$seuilLogFC
+#     
+#     if (is.null(rv$seuilPVal) ||
+#         is.null(rv$seuilLogFC) ||
+#         is.null(input$diffAnaMethod)
+#     ) {return(NULL)}
+#     if (input$condition1 == input$condition2) {return(NULL)}
+#     
+#     t <- NULL
+#     # Si on a deja des pVal, alors, ne pas recalculer avec ComputeWithLimma
+#     if (isContainedIn(c("logFC","P.Value"),names(fData(rv$current.obj)) ) ){
+#     t <- fData(rv$current.obj)[,"P.Value"]
+#     } else{
+#     #data <- RunDiffAna()
+#     data <- rv$resAnaDiff 
+#     if (is.null(data)) {return (NULL)}
+#     t <- data$P.Value
+#     }
+#     
+#     
+#     hist(sort(1-t), breaks=80, col="grey")
+#     
+# })
 
 
 
@@ -919,43 +933,33 @@ output$calibrationPlot <- renderPlot({
     input$calibrationMethod
     input$numericValCalibration
     rv$seuilLogFC
+    rv$resAnaDiff
     
     if (
-        is.null(rv$seuilPVal) ||
+        is.null(input$calibrationMethod) || 
         is.null(rv$seuilLogFC) ||
-        is.null(input$diffAnaMethod)
+        is.null(input$diffAnaMethod) ||
+        is.null(rv$resAnaDiff$logFC)
     ) {return(NULL)}
-    if (input$condition1 == input$condition2) {return(NULL)}
+    #if (input$condition1 == input$condition2) {return(NULL)}
     
     
     t <- NULL
     method <- NULL
-    # Si on a deja des pVal, alors, ne pas recalculer avec ComputeWithLimma
-    if (isContainedIn(c("logFC","P.Value"),names(fData(rv$current.obj)) ) ){
-    t <- fData(rv$current.obj)$P.Value
-    t <- t[which(abs(fData(rv$current.obj)$logFC) >= 
-                    rv$current.obj@experimentData@other$threshold.logFC)]
-    method <- NULL
-    } else{
-    data <- RunDiffAna()
-    if (is.null(data)) {return (NULL)}
-    t <- data$P.Value
-    t <- t[which(abs(data$logFC) >= rv$seuilLogFC)]
-    method <- NULL
-    }
-    
+        t <- rv$resAnaDiff$P.Value
+        t <- t[which(abs(rv$resAnaDiff$logFC) >= rv$seuilLogFC)]
     
     ll <- NULL
 
         if ((input$calibrationMethod == "numeric value") 
             && !is.null(input$numericValCalibration)) {
-        #print("methode numeric value")
+        
         ll <-catchToList(
             wrapperCalibrationPlot(t, input$numericValCalibration))
         rv$errMsgCalibrationPlot <- ll$warnings[grep( "Warning:", ll$warnings)]
         }
         else if (input$calibrationMethod == "Benjamini-Hochberg") {
-        #print("methode BH")
+        
         ll <-catchToList(wrapperCalibrationPlot(t, 1))
         rv$errMsgCalibrationPlot <- ll$warnings[grep( "Warning:", ll$warnings)]
         }else { 
@@ -995,29 +999,26 @@ div(HTML(txt), style="color:red")
 })
 
 
+#--------------------------------------------------
 output$calibrationPlotAll <- renderPlot({
+    rv$resAnaDiff
+    rv$seuilLogFC
+    input$diffAnaMethod
+    input$condition1
+    input$condition2
+    
+    
     if (
-    is.null(rv$seuilPVal) ||
     is.null(rv$seuilLogFC) ||
-    is.null(input$diffAnaMethod)
+    is.null(input$diffAnaMethod) ||
+    is.null(rv$resAnaDiff)
     ) {return(NULL)}
     if (input$condition1 == input$condition2) {return(NULL)}
     
     t <- NULL
-    # Si on a deja des pVal, alors, ne pas recalculer avec ComputeWithLimma
-    if (isContainedIn(c("logFC","P.Value"),names(fData(rv$current.obj)) ) ){
-    t <- fData(rv$current.obj)$P.Value
-    t <- t[which(abs(fData(rv$current.obj)$logFC) 
-                >= rv$current.obj@experimentData@other$threshold.logFC)]
-    
-    } else{
-    data <- RunDiffAna()
-    if (is.null(data)) {return (NULL)}
-    t <- data$P.Value
-    t <- t[which(abs(data$logFC) >= rv$seuilLogFC)]
-    
-    }
-    
+    t <- rv$resAnaDiff$P.Value
+    t <- t[which(abs(rv$resAnaDiff$logFC) >= rv$seuilLogFC)]
+
     
     l <- NULL
     l <-catchToList(wrapperCalibrationPlot(t, "ALL")  )
@@ -1087,8 +1088,7 @@ observe({
     
     isolate({
     
-    data <- RunDiffAna()
-
+    data <- rv$resAnaDiff
     if (is.null(data)) {return (NULL)}
     m <- NULL
     if (input$calibrationMethod == "Benjamini-Hochberg") { m <- 1}
@@ -1353,9 +1353,6 @@ output$chooseImputationMethod <- renderUI({
     m <- NULL
     tag <- rv$current.obj@experimentData@other$imputation.method
     if (!is.null(tag)){ m <- tag}
-    #print(m)
-    #print(tag)
-    #print(imputationAlgorithms[[m]])
     selectInput("missing.value.algorithm",
                 "Choose algorithm",
                 choices = names(imputationAlgorithms),
@@ -1380,7 +1377,7 @@ output$seuilNADelete <- renderUI({
     }
     ch <- NULL
     tag <- rv$current.obj@experimentData@other$mvFilter.threshold
-    #print(tag)
+    
     if (!is.null(tag)) { ch <- tag}
     else {ch <- choix[[1]]}
     selectInput("seuilNA", 
@@ -1714,8 +1711,6 @@ output$overview <- renderUI({
                                     (dim(exprs(rv$current.obj))[1]*
                                     dim(exprs(rv$current.obj))[2]), digits=4)
     d <- "lines"
-    #print("rv$typeOfDataset")
-    #print(rv$typeOfDataset)
     if (rv$typeOfDataset == "peptide") {d <- "peptides"}
     else if (rv$typeOfDataset == "protein") {d <- "proteins"}
     else {d <- "analytes"}
@@ -2006,9 +2001,7 @@ output$viewBoxPlot_DS <- renderPlot({
     #input$whichGroup2Color
     
     if (is.null(rv$current.obj)){return(NULL)}
-    # print(input$legendXAxis_DS)
-    #print(str(input$legendXAxis_DS))
-    wrapper.boxPlotD(rv$current.obj,  input$legendXAxis_DS)
+     wrapper.boxPlotD(rv$current.obj,  input$legendXAxis_DS)
     
     
 })
@@ -2349,53 +2342,43 @@ observe({
 
 observe({
     if (!is.null(input$seuilPVal)){rv$seuilPVal <- input$seuilPVal}
-    # print(rv$seuilPVal)
 })
 
 observe({
     if (!is.null(input$seuilLogFC)){rv$seuilLogFC <- input$seuilLogFC}
-    # print(rv$seuilLogFC)
 })
 
 
 output$nbSelectedItems <- renderUI({
-    rv$seuilPVal
     rv$seuilLogFC
     input$condition1
     input$condition2
     input$diffAnaMethod
     rv$current.obj
-
+    rv$resAnaDiff
+    
+    
+    if (is.null(rv$resAnaDiff$logFC)){return(NULL)}
+    
     if (is.null( input$diffAnaMethod) || (input$diffAnaMethod == "None")){
         return(NULL)}
     p <- NULL
-    if ("P.Value"  %in% names(fData(rv$current.obj))){
-        p$P.Value <- fData(rv$current.obj)$P.Value
-        p$logFC <- fData(rv$current.obj)$logFC
-    }else {
-        p <- RunDiffAna()
-    }
-    if (is.null(p)) {return (NULL)}
+  
+        p <- rv$resAnaDiff
     upItemsPVal <- NULL
     upItemsLogFC <- NULL
-    
-    if (!is.null(rv$seuilPVal)) {
-        upItemsPVal <- which(-log10(p$P.Value) >= rv$seuilPVal)}
-    
-    if (!is.null(rv$seuilPVal)) {
-        upItemsLogFC <- which(abs(p$logFC) >= rv$seuilLogFC)}
+   
+   
+        upItemsLogFC <- which(abs(p$logFC) >= rv$seuilLogFC)
+
     
     
     nbTotal <- nrow(exprs(rv$current.obj))
     nbSelected <- NULL
     t <- NULL
-    
-    if (!is.null(rv$seuilPVal) && !is.null(rv$seuilLogFC) ) {
-        t <- intersect(upItemsPVal, upItemsLogFC)}
-    else if (!is.null(rv$seuilPVal) && is.null(rv$seuilLogFC) ) {
-        t <- upItemsPVal}
-    else if (is.null(rv$seuilPVal) && !is.null(rv$seuilLogFC) ) {
-        t <- upItemsLogFC}
+
+        t <- upItemsLogFC
+
     
     nbSelected <- length(t)
     
@@ -2424,19 +2407,18 @@ output$nbSelectedItemsStep3 <- renderUI({
         p$P.Value <- fData(rv$current.obj)$P.Value
         p$logFC <- fData(rv$current.obj)$logFC
     }else {
-        p <- RunDiffAna()
+
+        p <- rv$resAnaDiff
     }
     
     if (is.null(p)) {return (NULL)}
     upItemsPVal <- NULL
     upItemsLogFC <- NULL
     
-    if (!is.null(rv$seuilPVal)) {
-        upItemsPVal <- which(-log10(p$P.Value) >= rv$seuilPVal)}
-    
-    if (!is.null(rv$seuilPVal)) {
-        upItemsLogFC <- which(abs(p$logFC) >= rv$seuilLogFC)}
-    
+
+        upItemsPVal <- which(-log10(p$P.Value) >= rv$seuilPVal)
+        upItemsLogFC <- which(abs(p$logFC) >= rv$seuilLogFC)
+
     
     nbTotal <- nrow(exprs(rv$current.obj))
     nbSelected <- NULL
@@ -2499,57 +2481,45 @@ observe({
 
 #-------------------------------------------------------------------
 output$volcanoplot <- renderPlot({
-    rv$seuilPVal
     rv$seuilLogFC
     input$condition1
     input$condition2
     input$diffAnaMethod
+    rv$resAnaDiff
     
-    if (is.null(input$condition1) ||is.null(input$condition2))
-    {return(NULL)}
+    if (length(rv$resAnaDiff$logFC) == 0)
+        {return(NULL)}
     if (input$condition1 == input$condition2) {return(NULL)}
+    if (is.null(input$condition1)) { return(NULL)}
+    if (is.null(input$condition2)) { return(NULL)}
+    
     if (is.null(rv$seuilLogFC) || is.na(rv$seuilLogFC)) { return (NULL)}
     
-    isolate({
-    
-    #Si on a deja des pVal, alors, ne pas recalculer 
-    if ("logFC" %in% names(fData(rv$current.obj) )){
-        
-        cond <- c(rv$current.obj@experimentData@other$condition1,
-                  rv$current.obj@experimentData@other$condition2)
-        
-        
-        diffAnaVolcanoplot(fData(rv$current.obj)$logFC,
-                        fData(rv$current.obj)$P.Value, 
-                        0,
-                        rv$current.obj@experimentData@other$threshold.logFC,
-                        cond)
-    }else{
-        #p <- NULL
-        p <- RunDiffAna()
         cond <- c(input$condition1, input$condition2)
-        diffAnaVolcanoplot(p$logFC, 
-                            p$P.Value, 
-                            rv$seuilPVal, 
-                            rv$seuilLogFC,
-                            cond)
-    }
-    })
+        diffAnaVolcanoplot(logFC = rv$resAnaDiff$logFC, 
+                           pVal = rv$resAnaDiff$P.Value, 
+                           threshold_logFC = rv$seuilLogFC,
+                            conditions = cond)
+
 })
 
 
 output$volcanoplotStep3 <- renderPlot({
+    
     rv$seuilPVal
     rv$seuilLogFC
     input$condition1
     input$condition2
     input$diffAnaMethod
+    rv$resAnaDiff
     
+    if (length(rv$resAnaDiff$logFC) == 0)
+    {return(NULL)}
     if (is.null(input$condition1) ||is.null(input$condition2))
     {return(NULL)}
     if (input$condition1 == input$condition2) {return(NULL)}
     if (is.null(rv$seuilPVal) || is.na(rv$seuilPVal)) { return (NULL)}
-    
+    if (is.null(rv$seuilLogFC) || is.na(rv$seuilLogFC)) { return (NULL)}
     
     isolate({
     
@@ -2563,8 +2533,7 @@ output$volcanoplotStep3 <- renderPlot({
                     rv$current.obj@experimentData@other$condition2)
         )
     }else{
-        #p <- NULL
-        p <- RunDiffAna()
+        p <- rv$resAnaDiff
         cond <- c(input$condition1, input$condition2)
         
         diffAnaVolcanoplot(p$logFC, 
@@ -2674,7 +2643,8 @@ output$limmaplot <- DT::renderDataTable({
                     fData(rv$current.obj)[selectedItems,
                     c("logFC", "P.Value", "Significant")])
         } else{
-    data <- RunDiffAna()
+    #data <- RunDiffAna()
+    data <- rv$resAnaDiff
     upItems1 <- which(-log10(data$P.Value) >= rv$seuilPVal)
     upItems2 <- which(abs(data$logFC) >= rv$seuilLogFC)
     selectedItems <- intersect(upItems1, upItems2)
@@ -2721,7 +2691,7 @@ output$linkLimma <- renderUI({
 
 # store the object in binary file
 saveMSnset <- function(name, fileExt, obj ){
-    #print(rv$dirname)
+    
     saveRDS(obj,file=paste(rv$dirname,"/", name, fileExt,sep=""))
     return(obj)
 }
@@ -2735,7 +2705,7 @@ observe({
         || (GetExtension(input$file1$name) == "xlsx") ) 
         && is.null(input$XLSsheets)) {return(NULL)  }
     
-    # print(input$file1$datapath)
+    
     ClearMemory()
     ext <- GetExtension(input$file1$name)
     if ((ext == "txt") || (ext == "csv") ){
@@ -3469,8 +3439,15 @@ ConditionTabPanel <- reactive({
 ##' Missing values imputation - reactivity behavior
 ##' @author Samuel Wieczorek
 observe({
+    input$missing.value.algorithm
+    rv$current.obj
+    input$datasets
+    
     if (is.null(input$perform.imputation.button) ){return(NULL)}
     if (input$perform.imputation.button == 0){return(NULL)}
+    if (is.null(input$missing.value.algorithm) ){return(NULL)}
+    if (is.null(rv$current.obj) ){return(NULL)}
+    if (is.null(input$datasets) ){return(NULL)}
     
     isolate({
     
@@ -3479,9 +3456,7 @@ observe({
         {
         
         
-        input$missing.value.algorithm
-    rv$current.obj
-    input$datasets
+       
     .temp <- unlist(strsplit(input$missing.value.algorithm, " - "))
     if (.temp[1] == "None"){
         rv$current.obj <- rv$dataset[[input$datasets]]
@@ -3515,7 +3490,7 @@ observe({
         , warning = function(w) {
             print(w)
         }, error = function(e) {
-            shinyjs::info(e)
+            shinyjs::info(paste("3542",e))
         }, finally = {
             #cleanup-code
         
