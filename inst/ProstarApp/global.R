@@ -128,6 +128,40 @@ return (
 }
 
 
+
+gGraphicsFilenames <- list(
+    histoMV_DS = "histoMV_DS.png",
+    histoMVPerLines_DS = "histoMissvaluesPerLines_DS.png",
+    histoMVPerLinesConditions_DS = "histoMVPerLinesPerConditions_DS.png",
+    histoMV = "histoMV_DS.png",
+    histoMVPerLines = "histoMissvaluesPerLines.png",
+    histoMVPerLinesConditions = "histoMVPerLinesPerConditions.png",
+    corrMatrix = "corrMatrix.png",
+    heatmap = "heatmap.png",
+    boxplot = "boxplot.png",
+    varDist = "varDist.png",
+    densityPlot = "densityPlot.png",
+    densityPlotNorm = "densityPlotNorm.png",
+    propContRev = "propContRev.png",
+    boxplotNorm = "boxplotNorm.png",
+    compareNorm = "compareNorm.png",
+    MVtypePlot = "MVtypePlot.png",
+    imageNA = "imageNA.png",
+    AgregMatUniquePeptides = "AgregMatUniquePeptides.png",
+    AgregMatSharedPeptides = "AgregMatSharedPeptides.png",
+    volcanoPlot_1 = "volcanoPlot_1.png",
+    volcanoPlot_3 = "volcanoPlot_3.png",
+    calibrationPlot = "calibrationPlot.png",
+    calibrationPlotAll = "calibrationPlotAll.png"
+
+    
+)
+
+defaultGradientRate <- 5
+
+
+
+
 # variables for different extensions files format
 gFileFormatExport <- list(msnset = "MSnset",excel = "Excel")
 
@@ -155,7 +189,9 @@ return(strsplit(name,'.', fixed=T)[[1]][1])}
 
 #--------------------------------------------------------
 GetExtension <- function(name){
-return(strsplit(name,'.', fixed=T)[[1]][2])}
+    temp <- unlist(strsplit(name,'.', fixed=T))
+    return(last(temp))
+    }
 
 
 

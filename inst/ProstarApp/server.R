@@ -1,7 +1,8 @@
 options(shiny.maxRequestSize=30*1024^2) 
-options(shiny.trace=TRUE)
+options(shiny.trace=FALSE)
 options(shiny.reactlog=TRUE)
 
+#library(MSnbase)
 library(shiny)
 library(rhandsontable)
 library(data.table)
@@ -56,10 +57,48 @@ rv <- reactiveValues(
     commandLog = NULL, 
     normalizationFamily = NULL,
     normalizationMethod = NULL, 
-    matAdj = NULL, 
+    matAdj = NULL,
+    test = NULL, 
     resAnaDiff = list(logFC=NULL, P.Value=NULL))
 
+
+initializeProstar <- reactive({
+    
+    rv$current.obj = NULL
+    rv$current.obj.name = NULL
+    rv$deleted.mvLines = NULL
+    rv$deleted.contaminants = NULL
+    rv$deleted.reverse = NULL
+    # variable to keep memory of previous datasets before 
+    # transformation of the data
+    rv$dataset = list()
+    # Variable that contains the log for the current R session
+    rv$text.log = data.frame(Date="", Dataset="", History="", stringsAsFactors=F)
+    rv$seuilLogFC = 0
+    rv$seuilPVal = 1e-60
+    rv$tab1 = NULL
+    rv$dirname = ""
+    rv$dirnameforlink = ""
+    rv$conditions = list(cond1 = NULL, cond2 = NULL)
+    rv$temp.aggregate = NULL
+    rv$hot = port 
+    rv$calibrationRes = NULL
+    rv$errMsgcalibrationPlot = NULL
+    rv$errMsgcalibrationPlotALL = NULL
+    rv$typeOfDataset = ""
+    rv$widthSidebar = 3
+    rv$commandLog = NULL 
+    rv$normalizationFamily = NULL
+    rv$normalizationMethod = NULL 
+    rv$matAdj = NULL
+    test = NULL
+    rv$resAnaDiff = list(logFC=NULL, P.Value=NULL)
+})
+
+
+
 env <- environment()
+sessionID <- Sys.getpid()
 
 writeToCommandLogFile <- function(txt){
     
@@ -71,9 +110,20 @@ writeToCommandLogFile <- function(txt){
     #     append = TRUE)
 }
 
-if (file.exists(commandLogFile)){
-    file.remove(commandLogFile)
-}
+dirSessionPath <- paste(tempdir(), sessionID, sep="/")
+ if (!dir.exists(dirSessionPath)){
+     dir.create(dirSessionPath)
+ }
+
+
+
+output$currentObjLoaded <- reactive({
+    rv$current.obj
+    return(!is.null(rv$current.obj))})
+
+outputOptions(output, 'currentObjLoaded', suspendWhenHidden=FALSE)
+
+
 
 output$code <- renderUI({
     rv$commandLog
@@ -129,7 +179,7 @@ output$diffAnalysis_sidebarPanelTab1 <- renderUI({
     if (is.null(rv$current.obj)) { return(NULL)}
     method <- NULL
     threshold.logFC <- 0
-    if ("logFC" %in% names(fData(rv$current.obj) )){
+    if ("logFC" %in% names(Biobase::fData(rv$current.obj) )){
         
         method <- rv$current.obj@experimentData@other$method
         threshold.logFC <- rv$current.obj@experimentData@other$threshold.logFC
@@ -150,7 +200,7 @@ HTML("This corresponds to the ratio: <br>Condition 2 / Condition 1.")
 
 output$diffAnalysis_sidebarPanelTab2 <- renderUI({
     calibMethod <- "pounds"
-    if ("logFC" %in% names(fData(rv$current.obj) )){
+    if ("logFC" %in% names(Biobase::fData(rv$current.obj) )){
         calibMethod <- rv$current.obj@experimentData@other$calibrationMethod
         if (is.null(calibMethod)) calibMethod <- "pounds"
     }
@@ -171,7 +221,7 @@ output$diffAnalysis_sidebarPanelTab3 <- renderUI({
     rv$current.obj
     if (is.null(rv$current.obj)) {return (NULL)}
     threshold.PVal <- 0
-    if ("logFC" %in% names(fData(rv$current.obj) )){
+    if ("logFC" %in% names(Biobase::fData(rv$current.obj) )){
         threshold.PVal <- rv$current.obj@experimentData@other$threshold.p.value
         #cond2 <- rv$current.obj@experimentData@other$condition2
     }
@@ -190,7 +240,6 @@ output$DP_sidebar_FilterTab1 <- renderUI({
     rv$current.obj
     if (is.null(rv$current.obj)){return(NULL)}
     filter <- NULL
-    #print(rv$current.obj@experimentData@other$mvFilter.method)
     tag <- rv$current.obj@experimentData@other$mvFilter.method
     if (!is.null(tag)) { filter <- tag}
     conditionalPanel(condition= "true"
@@ -280,23 +329,23 @@ output$VizualizeFilteredData <- DT::renderDataTable({
         obj <- rv$deleted.mvLines
         if(input$ChooseTabAfterFiltering == "quantiData" )
         {
-        data <- cbind(ID = rownames(fData(obj)),
-                    round(exprs(obj), digits=nDigitsMV))
-        }else {data <- cbind(ID = rownames(fData(obj)),fData(obj))}
+        data <- cbind(ID = rownames(Biobase::fData(obj)),
+                    round(Biobase::exprs(obj), digits=nDigitsMV))
+        }else {data <- cbind(ID = rownames(Biobase::fData(obj)),Biobase::fData(obj))}
     } else if ((input$ChooseViewAfterFiltering == "Contaminants") 
                 && !is.null(rv$deleted.contaminants)) { 
     obj <- rv$deleted.contaminants
     if(input$ChooseTabAfterFiltering == "quantiData" )
-        {data <- cbind(ID = rownames(fData(obj)),
-                        round(exprs(obj), digits=nDigitsMV))
-        }else {data <- cbind(ID = rownames(fData(obj)),fData(obj))}
+        {data <- cbind(ID = rownames(Biobase::fData(obj)),
+                        round(Biobase::exprs(obj), digits=nDigitsMV))
+        }else {data <- cbind(ID = rownames(Biobase::fData(obj)),Biobase::fData(obj))}
     } else if ((input$ChooseViewAfterFiltering == "Reverse") 
                 && !is.null(rv$deleted.reverse)){
         obj <- rv$deleted.reverse
         if(input$ChooseTabAfterFiltering == "quantiData" )
-        {data <- cbind(ID = rownames(fData(obj)),
-                        round(exprs(obj), digits=nDigitsMV))
-        }else {data <- cbind(ID = rownames(fData(obj)),fData(obj))}
+        {data <- cbind(ID = rownames(Biobase::fData(obj)),
+                        round(Biobase::exprs(obj), digits=nDigitsMV))
+        }else {data <- cbind(ID = rownames(Biobase::fData(obj)),Biobase::fData(obj))}
     }
     
     
@@ -360,7 +409,7 @@ output$DS_sidebarPanel_tab <- renderUI({
 
 output$DS_sidebarPanel_heatmap <- renderUI({
 
-conditionalPanel(condition='TRUE',
+conditionalPanel(condition= "true",
                     h3("Clustering Options"),
                     radioButtons("distance","Distance",
                                 choices = list(euclidean ="euclidean",
@@ -374,7 +423,7 @@ conditionalPanel(condition='TRUE',
 
 
 output$DS_sidebarPanel_Densityplot <- renderUI({
-conditionalPanel(condition='TRUE',
+conditionalPanel(condition= "true",
                     uiOutput("nGroup_DS"),
                     br(),
                     uiOutput("nShow_DS"))
@@ -384,7 +433,7 @@ conditionalPanel(condition='TRUE',
 
 
 output$DS_sidebarPanel_Boxplot <- renderUI({
-conditionalPanel(condition='TRUE',
+conditionalPanel(condition= "true",
                     uiOutput("ChooseLegendForAxis_DS"))
 
 })
@@ -396,7 +445,8 @@ conditionalPanel(condition='TRUE',
 #----------------------------------------------
 output$tabToShow <- renderUI({
 input$DS_TabsChoice
-
+if (is.null(input$DS_TabsChoice)) {return(NULL)}
+    
 if (input$DS_TabsChoice == "tabExprs"){DT::dataTableOutput("viewExprs")}
 else if (input$DS_TabsChoice == "tabfData"){DT::dataTableOutput("viewfData")}
 else if (input$DS_TabsChoice == "tabpData"){DT::dataTableOutput("viewpData")}
@@ -419,11 +469,7 @@ ComputeMVTags <- reactive({
 
 ########################################################
 ComputeAdjacencyMatrix <- reactive({
-    #       input$proteinId
-    #       rv$current.obj
-    #       if (is.null(input$proteinId)){return(NULL)}
-    #       if (is.null(rv$current.obj)){return(NULL)}
-    #       
+
     matSharedPeptides <- BuildAdjacencyMatrix(rv$current.obj, 
                                             input$proteinId,
                                             FALSE)
@@ -503,42 +549,42 @@ observe({
     data <- NULL
     
     isolate({
-    result = tryCatch(
-    {
-        writeToCommandLogFile(paste("cond1 <- '", input$condition1, "'", sep=""))
-        writeToCommandLogFile(paste("cond2 <- '", input$condition2, "'", sep=""))
-        writeToCommandLogFile(paste("method <- '", input$diffAnaMethod, "'", sep=""))
-        
-        if (input$diffAnaMethod == "Limma"){
-            rv$resAnaDiff <- wrapper.diffAnaLimma(rv$current.obj, 
-                                    input$condition1, 
-                                    input$condition2)
-        writeToCommandLogFile(
-            "data <- wrapper.diffAnaLimma(current.obj, cond1, cond2)"
-            )
-        
-        } else if (input$diffAnaMethod == "Welch"){
-            rv$resAnaDiff <- wrapper.diffAnaWelch(rv$current.obj, 
-                                    input$condition1, 
-                                    input$condition2)
-        writeToCommandLogFile(
-            "data <- wrapper.diffAnaWelch(current.obj, cond1, cond2)"
+        result = tryCatch(
+            {
+                writeToCommandLogFile(paste("cond1 <- '", input$condition1, "'", sep=""))
+                writeToCommandLogFile(paste("cond2 <- '", input$condition2, "'", sep=""))
+                writeToCommandLogFile(paste("method <- '", input$diffAnaMethod, "'", sep=""))
+                
+                if (input$diffAnaMethod == "Limma"){
+                    rv$resAnaDiff <- wrapper.diffAnaLimma(rv$current.obj, 
+                                                          input$condition1, 
+                                                          input$condition2)
+                    writeToCommandLogFile(
+                        "data <- wrapper.diffAnaLimma(current.obj, cond1, cond2)"
+                    )
+                    
+                } else if (input$diffAnaMethod == "Welch"){
+                    rv$resAnaDiff <- wrapper.diffAnaWelch(rv$current.obj, 
+                                                          input$condition1, 
+                                                          input$condition2)
+                    writeToCommandLogFile(
+                        "data <- wrapper.diffAnaWelch(current.obj, cond1, cond2)"
+                    )
+                }
+            }
+            , warning = function(w) {
+                shinyjs::info(w)
+            }, error = function(e) {
+                shinyjs::info(paste("527",e))
+            }, finally = {
+                #cleanup-code
+                
+            }
+            
         )
-        }
-    }
-    , warning = function(w) {
-        shinyjs::info(w)
-    }, error = function(e) {
-        shinyjs::info(paste("527",e))
-    }, finally = {
-        #cleanup-code
         
-    }
-    
-)
-    
     })
-
+    
 })
 
 
@@ -552,7 +598,7 @@ UpdateLog <- function(text, name){
 
 ######################################
 GetNbNA <- reactive({
-    nb <- sum(is.na(exprs(rv$current.obj))==TRUE)
+    nb <- sum(is.na(Biobase::exprs(rv$current.obj))==TRUE)
     return(nb)
 })
 
@@ -601,6 +647,8 @@ ClearMemory <- function(){
     rv$current.obj <- NULL
     rv$dataset <- list()
     
+    initializeProstar()
+    
     updateSelectInput(session, "datasets",  "", choices = "none")
     #UpdateLog("Memory has been cleared","none")
     updateCheckboxInput(session, "replaceAllZeros",value = TRUE)
@@ -614,6 +662,438 @@ ClearMemory <- function(){
 }
 
 
+#######################################################################
+########## FOR THE DESCRIPTIVE STATISTICS #############################
+#######################################################################
+observe({
+    rv$current.obj
+    input$legendXAxis_DS
+    input$whichGroup2Color_DS
+    input$lab2Show_DS
+    input$expGradientRate
+     input$linkage
+    input$distance
+    
+    
+    
+    if (is.null(rv$current.obj)) {return(NULL)}
+    
+    if (!is.null(rv$current.obj)){
+        png(paste(tempdir(), sessionID, gGraphicsFilenames$histoMV_DS, sep="/")
+        ,width = 400, height = 400)
+    wrapper.mvHisto(rv$current.obj)
+    dev.off()
+   
+    
+    
+    png(paste(tempdir(), sessionID, gGraphicsFilenames$histoMVPerLines_DS, sep="/")
+        ,width = 400, height = 400)
+    wrapper.mvPerLinesHisto(rv$current.obj, 
+                            c(2:length(colnames(Biobase::pData(rv$current.obj)))))
+    dev.off()
+
+    
+    png(paste(tempdir(), sessionID, gGraphicsFilenames$histoMVPerLinesConditions_DS, sep="/")
+        ,width = 500, height = 400)
+    wrapper.mvPerLinesHistoPerCondition(rv$current.obj, 
+                                        c(2:length(colnames(Biobase::pData(rv$current.obj)))))
+    dev.off()
+    }
+
+    if (!is.null(input$linkage) && !is.null(input$distance)
+        && (getNumberOfEmptyLines(Biobase::exprs(rv$current.obj)) == 0)) {
+        png(paste(tempdir(), sessionID, gGraphicsFilenames$heatmap, sep="/")
+            ,width = 800, height = 400)
+        wrapper.heatmapD(rv$current.obj,
+                         input$distance, 
+                         input$linkage,
+                         TRUE) 
+        dev.off() 
+    }
+    
+    gradient <- NULL
+    if (is.null(input$expGradientRate)){gradient <- defaultGradientRate}
+    else{gradient <- input$expGradientRate}
+    png(paste(tempdir(), sessionID, gGraphicsFilenames$corrMatrix, sep="/")
+        ,width = 500, height = 500)
+    wrapper.corrMatrixD(rv$current.obj, rate = gradient)
+    dev.off()
+    
+    
+    
+    legDS <- NULL
+    if (is.null(input$legendXAxis_DS)){
+        .names <- colnames(Biobase::pData(rv$current.obj))[-1]
+        legDS <- .names[1]}
+    else{legDS <- input$legendXAxis_DS}
+    png(paste(tempdir(), sessionID, gGraphicsFilenames$boxplot, sep="/")
+        ,width = 800, height = 600)
+    wrapper.boxPlotD(rv$current.obj,  legDS)
+    dev.off()
+    
+    
+    
+    labels_DS <- NULL
+    labelsToShow_DS <- NULL
+    gToColor_DS <- NULL
+    if (is.null(input$lab2Show_DS)) { 
+        labelsToShow_DS <- c(1:nrow(Biobase::pData(rv$current.obj)))
+        }
+    else { labelsToShow_DS <- input$lab2Show_DS}
+    
+    if (is.null(input$whichGroup2Color_DS)){
+        gToColor_DS <- "Condition"
+    }else{gToColor_DS <- input$whichGroup2Color_DS}
+    
+    if (is.null(input$whichGroup2Color_DS) || (input$whichGroup2Color_DS == "Condition")){
+        labels_DS <- Biobase::pData(rv$current.obj)[,"Label"]
+    }else {
+        labels_DS <- paste(Biobase::pData(rv$current.obj)[,"Label"],
+                      Biobase::pData(rv$current.obj)[,"Bio.Rep"],
+                      Biobase::pData(rv$current.obj)[,"Tech.Rep"],
+                      Biobase::pData(rv$current.obj)[,"Analyt.Rep"],
+                      sep= "_")
+    }
+   
+    png(paste(tempdir(), sessionID, gGraphicsFilenames$densityPlot, sep="/")
+        ,width = 800, height = 600)
+    wrapper.densityPlotD(rv$current.obj, labels_DS, as.numeric(labelsToShow_DS), 
+                         gToColor_DS)
+    dev.off()
+    
+    #_-----------------------------------------
+    
+   
+    #------------------------------------------------
+    
+    png(paste(tempdir(), sessionID, gGraphicsFilenames$varDist, sep="/")
+        ,width = 800, height = 600)
+    wrapper.varianceDistD(rv$current.obj)
+    dev.off()
+    
+    
+})
+
+
+
+#######################################################################
+##########       FOR THE FILTERING TOOL   #############################
+#######################################################################
+observe({
+    rv$current.obj
+    input$idBoxContaminants
+    input$idBoxReverse
+    input$prefixContaminants
+    input$prefixReverse
+
+    
+    if (is.null(rv$current.obj)) {return(NULL)}
+    
+    png(paste(tempdir(), sessionID, gGraphicsFilenames$histoMV, sep="/")
+        ,width = 300, height = 400)
+    if (!is.null(rv$current.obj)){wrapper.mvHisto(rv$current.obj)}
+    dev.off()
+    
+
+    
+    png(paste(tempdir(), sessionID, gGraphicsFilenames$histoMVPerLines, sep="/")
+        ,width = 300, height = 400)
+    wrapper.mvPerLinesHisto(rv$current.obj, 
+                            c(2:length(colnames(Biobase::pData(rv$current.obj)))))
+    dev.off()
+    
+    
+    png(paste(tempdir(), sessionID, gGraphicsFilenames$histoMVPerLinesConditions, sep="/")
+        ,width = 300, height = 400)
+    wrapper.mvPerLinesHistoPerCondition(rv$current.obj, 
+                                        c(2:length(colnames(Biobase::pData(rv$current.obj)))))
+    dev.off()
+    
+
+    
+    p <- rep("",4)
+    if (is.null(input$idBoxContaminants)) {p[1] <- ""}
+    else {p[1] <-input$idBoxContaminants}
+    if (is.null(input$idBoxReverse)) {p[2] <- ""}
+    else {p[2] <-input$idBoxReverse}
+    if (is.null(input$prefixContaminants)) {p[3] <- ""}
+    else {p[3] <-input$prefixContaminants}
+    if (is.null(input$prefixReverse)) {p[4] <- ""}
+    else {p[4] <-input$prefixReverse}
+    png(paste(tempdir(), sessionID, gGraphicsFilenames$propContRev, sep="/")
+        ,width = 800, height = 400)
+    proportionConRev(rv$current.obj,p[1], p[3], p[2],p[4])
+    dev.off()
+})
+
+
+
+
+
+
+#######################################################################
+##########     FOR THE NORMALIZATION      #############################
+#######################################################################
+observe({
+    rv$dataset[[input$datasets]]
+    rv$current.obj
+    input$legendXAxis
+    input$whichGroup2Color
+    input$lab2Show
+    input$normalization.method
+    input$perform.normalization
+
+    if (is.null(rv$current.obj) || is.null(rv$dataset[[input$datasets]]) ||
+        is.null(input$normalization.method)) {return(NULL)}
+    
+
+    leg <- NULL
+    grp <- NULL
+    
+    labelsNorm <- NULL
+    labelsToShowNorm <- NULL
+    gToColorNorm <- NULL
+    if (is.null(input$lab2Show)) { 
+        labelsToShowNorm <- c(1:nrow(Biobase::pData(rv$current.obj)))
+    }
+    else { labelsToShowNorm <- input$lab2Show}
+    
+    if (is.null(input$whichGroup2Color)){
+        gToColorNorm <- "Condition"
+    }else{gToColorNorm <- input$whichGroup2Color}
+    
+    
+    if (is.null(input$legendXAxis)){
+        .names <- colnames(Biobase::pData(rv$current.obj))[-1]
+        leg <- .names[1]}
+    else{leg <- input$legendXAxis}
+   
+    
+    #_-----------------------------------------
+
+    if (is.null(input$whichGroup2Color) 
+        || (input$whichGroup2Color == "Condition")){
+        labelsNorm <- Biobase::pData(rv$current.obj)[,"Label"]
+    }else {
+        labelsNorm <- paste(Biobase::pData(rv$current.obj)[,"Label"],
+                            Biobase::pData(rv$current.obj)[,"Bio.Rep"],
+                            Biobase::pData(rv$current.obj)[,"Tech.Rep"],
+                            Biobase::pData(rv$current.obj)[,"Analyt.Rep"],
+                            sep= "_")
+    }
+
+    png(paste(tempdir(), sessionID, gGraphicsFilenames$densityPlotNorm, sep="/"))
+    wrapper.densityPlotD(rv$current.obj, labelsNorm, as.numeric(labelsToShowNorm), 
+                         gToColorNorm)
+    dev.off()
+    
+    
+    
+    png(paste(tempdir(), sessionID, gGraphicsFilenames$compareNorm, sep="/"))
+        compareNormalizationD(Biobase::exprs(rv$dataset[[input$datasets]]),
+                              Biobase::exprs(rv$current.obj),
+                              labelsNorm,
+                              as.numeric(labelsToShowNorm),
+                              gToColorNorm)
+        dev.off()
+
+    png(paste(tempdir(), sessionID, gGraphicsFilenames$boxplotNorm, sep="/"))
+    wrapper.boxPlotD(rv$current.obj,leg ,gToColorNorm)
+    dev.off()
+
+})
+
+
+
+#######################################################################
+################      FOR THE AGGREGATION       #######################
+#######################################################################
+observe({
+     rv$matAdj
+    
+    if (is.null(rv$matAdj)) {return(NULL)}
+
+     png(paste(tempdir(), sessionID, gGraphicsFilenames$AgregMatUniquePeptides, sep="/"))
+     GraphPepProt(rv$matAdj$matWithUniquePeptides)
+     dev.off()
+     
+     png(paste(tempdir(), sessionID, gGraphicsFilenames$AgregMatSharedPeptides, sep="/"))
+     GraphPepProt(rv$matAdj$matWithSharedPeptides)
+     dev.off()
+
+})
+
+
+
+
+#######################################################################
+##########      FOR THE IMPUTATION        #############################
+#######################################################################
+observe({
+    rv$current.obj
+    
+    if (is.null(rv$current.obj)) {return(NULL)}
+    
+    isolate({
+        png(paste(tempdir(), sessionID, gGraphicsFilenames$MVtypePlot, sep="/"),
+            width = 400, height = 500)
+        wrapper.mvTypePlot(rv$current.obj)
+        dev.off()
+        
+        png(paste(tempdir(), sessionID, gGraphicsFilenames$imageNA, sep="/")
+            ,width = 600, height = 500)
+        wrapper.mvImage(rv$current.obj)
+        dev.off()
+    })
+    
+    
+})
+
+
+
+#######################################################################
+##########  FOR THE DIFFERENTIAL ANALYSIS   ############################
+#######################################################################
+observe({
+    rv$seuilPVal
+    rv$seuilLogFC
+    input$condition1
+    input$condition2
+    input$diffAnaMethod
+    rv$resAnaDiff
+    
+     if (is.null(input$condition1) || is.null(input$condition2) ||
+        is.null(rv$seuilLogFC) || is.na(rv$seuilLogFC) ||
+        (input$condition1 == input$condition2) ||
+        (length(rv$resAnaDiff$logFC) == 0)) { return(NULL)}
+   
+    cond <- c(input$condition1, input$condition2)
+    png(paste(tempdir(), sessionID, gGraphicsFilenames$volcanoPlot_1, sep="/")
+        ,width = 800, height = 500)
+    diffAnaVolcanoplot(logFC = rv$resAnaDiff$logFC, 
+                       pVal = rv$resAnaDiff$P.Value, 
+                       threshold_logFC = rv$seuilLogFC,
+                       conditions = cond)
+    dev.off()
+    
+   
+        
+    png(paste(tempdir(), sessionID, gGraphicsFilenames$volcanoPlot_3, sep="/")
+        ,width = 800, height = 500)
+        if ("logFC" %in% names(fData(rv$current.obj) )){
+            diffAnaVolcanoplot(fData(rv$current.obj)$logFC,
+                               fData(rv$current.obj)$P.Value, 
+                               rv$current.obj@experimentData@other$threshold.p.value,
+                               rv$current.obj@experimentData@other$threshold.logFC,
+                               c(rv$current.obj@experimentData@other$condition1,
+                                 rv$current.obj@experimentData@other$condition2)
+            )
+        }else{
+            cond <- c(input$condition1, input$condition2)
+            
+            diffAnaVolcanoplot(rv$resAnaDiff$logFC, 
+                               rv$resAnaDiff$P.Value, 
+                               rv$seuilPVal, 
+                               rv$seuilLogFC,
+                               cond)
+        }
+    dev.off()
+    
+    
+   # ________
+
+    if (is.null(input$calibrationMethod)  ) {return(NULL)}
+    #if (input$condition1 == input$condition2) {return(NULL)}
+    
+    
+    t <- NULL
+    method <- NULL
+    t <- rv$resAnaDiff$P.Value
+    t <- t[which(abs(rv$resAnaDiff$logFC) >= rv$seuilLogFC)]
+   
+    l <- NULL
+    png(paste(tempdir(), sessionID, gGraphicsFilenames$calibrationPlotAll, sep="/"),
+        width = 800, height = 400)
+    l <-catchToList(wrapperCalibrationPlot(t, "ALL")  )
+    rv$errMsgCalibrationPlotAll <- l$warnings[grep( "Warning:", l$warnings)]
+    dev.off()
+    
+    ll <- NULL
+    png(paste(tempdir(), sessionID, gGraphicsFilenames$calibrationPlot, sep="/"),
+        width = 800, height = 400)
+    if ((input$calibrationMethod == "numeric value") 
+        && !is.null(input$numericValCalibration)) {
+        
+        ll <-catchToList(
+            wrapperCalibrationPlot(t, input$numericValCalibration))
+        rv$errMsgCalibrationPlot <- ll$warnings[grep( "Warning:", ll$warnings)]
+    }
+    else if (input$calibrationMethod == "Benjamini-Hochberg") {
+        
+        ll <-catchToList(wrapperCalibrationPlot(t, 1))
+        rv$errMsgCalibrationPlot <- ll$warnings[grep( "Warning:", ll$warnings)]
+    }else { 
+        ll <-catchToList(wrapperCalibrationPlot(t, input$calibrationMethod))
+        rv$errMsgCalibrationPlot <- ll$warnings[grep( "Warning:", ll$warnings)]
+    }
+    dev.off()
+    
+    
+   
+    
+    
+})
+
+
+
+
+
+
+output$chooseDataset <- renderUI({
+    
+    if(require("DAPARdata")){
+        print("DAPARdata is loaded correctly")
+        selectInput("demoDataset",
+                    "Choose a demo dataset",
+                    choices = data(package='DAPARdata')$results[,"Item"])
+    } else {
+        print("trying to install DAPARdata")
+        install.packages("DAPARdata")
+        if(require(DAPARdata)){
+            print("DAPARdata installed and loaded")
+            selectInput("demoDataset",
+                        "Choose a demo dataset",
+                        choices = data(package='DAPARdata')$results[,"Item"])
+        } else {
+            stop("could not install the package DAPARdata")
+        }
+    }
+
+
+})
+
+observe({
+    input$loadDemoDataset
+    if (is.null(input$loadDemoDataset) || (input$loadDemoDataset == 0)) {return(NULL)}
+    
+    isolate({
+            ClearMemory()
+        data(list = input$demoDataset)
+        rv$current.obj <- get(input$demoDataset)
+            #rv$current.obj.name <- DeleteFileExtension(input$file$name)
+            rv$typeOfDataset <- rv$current.obj@experimentData@other$typeOfData
+            
+            # writeToCommandLogFile(
+            #     paste("current.obj <- readRDS('",
+            #           input$file$name,
+            #           "')", sep="")
+            # )
+            
+            loadObjectInMemoryFromConverter()
+
+    })
+    
+})
 
 ##-- Open a MSnset File --------------------------------------------
 observe({ 
@@ -632,17 +1112,15 @@ observe({
         rv$current.obj.name <- DeleteFileExtension(input$file$name)
         rv$typeOfDataset <- rv$current.obj@experimentData@other$typeOfData
         
-        
         #Si on a deja des pVal, alors, ne pas recalculer 
         if ("logFC" %in% names(Biobase::fData(rv$current.obj) )){
             rv$resAnaDiff <- list(logFC = Biobase::fData(rv$current.obj)$logFC,
-                                 P.Value = Biobase::fData(rv$current.obj)$P.Value)
+                                  P.Value = Biobase::fData(rv$current.obj)$P.Value)
             rv$seuilLogFC <- rv$currentObjexperimentData@other$threshold.logFC
             rv$seuilPVal<- rv$currentObj@experimentData@other$threshold.p.value
             
-    }
-
-                           
+        }
+        
         writeToCommandLogFile(
             paste("current.obj <- readRDS('",
                                 input$file$name,
@@ -721,11 +1199,11 @@ observe({
         
     
     for(c in input$columnsForProteinDataset.box){
-        newCol <- BuildColumnToProteinDataset(fData(rv$current.obj), m, c)
-        cnames <- colnames(fData(rv$temp.aggregate))
-        fData(rv$temp.aggregate) <- 
-            data.frame(fData(rv$temp.aggregate), newCol)
-        colnames(fData(rv$temp.aggregate)) <- c(cnames, c)
+        newCol <- BuildColumnToProteinDataset(Biobase::fData(rv$current.obj), m, c)
+        cnames <- colnames(Biobase::fData(rv$temp.aggregate))
+        Biobase::fData(rv$temp.aggregate) <- 
+            data.frame(Biobase::fData(rv$temp.aggregate), newCol)
+        colnames(Biobase::fData(rv$temp.aggregate)) <- c(cnames, c)
     }
     
     rv$current.obj <- rv$temp.aggregate
@@ -815,6 +1293,7 @@ output$showFDR <- renderText({
     input$calibrationMethod
     rv$resAnaDiff
     
+    
     if (is.null(input$diffAnaMethod) || (input$diffAnaMethod == "None")) 
     {return(NULL)}
     if (is.null(rv$current.obj)) {return(NULL)}
@@ -829,7 +1308,7 @@ output$showFDR <- renderText({
     if ((input$condition1 == input$condition2)) {return(NULL)}
     
     isolate({
-   
+        
         m <- NULL
         if (input$calibrationMethod == "Benjamini-Hochberg") { m <- 1}
         else if (input$calibrationMethod == "numeric value") {
@@ -838,38 +1317,40 @@ output$showFDR <- renderText({
         
         fdr <- diffAnaComputeFDR(rv$resAnaDiff, rv$seuilPVal, rv$seuilLogFC, m)
         HTML(paste("<h4>FDR = ", round(100*fdr, digits=2)," % </h4>", sep=""))
-
+        
     })
 })
 
 
-# 
-# output$histPValue <- renderPlot({
-#     rv$resAndaDiff
-#     rv$seuilPVal
-#     rv$seuilLogFC
-#     
-#     if (is.null(rv$seuilPVal) ||
-#         is.null(rv$seuilLogFC) ||
-#         is.null(input$diffAnaMethod)
-#     ) {return(NULL)}
-#     if (input$condition1 == input$condition2) {return(NULL)}
-#     
-#     t <- NULL
-#     # Si on a deja des pVal, alors, ne pas recalculer avec ComputeWithLimma
-#     if (isContainedIn(c("logFC","P.Value"),names(fData(rv$current.obj)) ) ){
-#     t <- fData(rv$current.obj)[,"P.Value"]
-#     } else{
-#     #data <- RunDiffAna()
-#     data <- rv$resAnaDiff 
-#     if (is.null(data)) {return (NULL)}
-#     t <- data$P.Value
-#     }
-#     
-#     
-#     hist(sort(1-t), breaks=80, col="grey")
-#     
-# })
+session$onSessionEnded(function() {
+    setwd(tempdir())
+    unlink(sessionID, recursive = TRUE)
+})
+
+
+
+output$histPValue <- renderPlot({
+    
+    if (is.null(rv$seuilPVal) ||
+        is.null(rv$seuilLogFC) ||
+        is.null(input$diffAnaMethod)
+    ) {return(NULL)}
+    if (input$condition1 == input$condition2) {return(NULL)}
+    
+    t <- NULL
+    # Si on a deja des pVal, alors, ne pas recalculer avec ComputeWithLimma
+    if (isContainedIn(c("logFC","P.Value"),names(Biobase::fData(rv$current.obj)) ) ){
+    t <- Biobase::fData(rv$current.obj)[,"P.Value"]
+    } else{
+    data <- RunDiffAna()
+    if (is.null(data)) {return (NULL)}
+    t <- data$P.Value
+    }
+    
+    
+    hist(sort(1-t), breaks=80, col="grey")
+    
+})
 
 
 
@@ -927,47 +1408,16 @@ catchToList <- function(expr) {
 } 
 
 
-
-
-output$calibrationPlot <- renderPlot({
+output$calibrationPlot <- renderImage({
     input$calibrationMethod
     input$numericValCalibration
-    rv$seuilLogFC
     rv$resAnaDiff
-    
-    if (
-        is.null(input$calibrationMethod) || 
-        is.null(rv$seuilLogFC) ||
-        is.null(input$diffAnaMethod) ||
-        is.null(rv$resAnaDiff$logFC)
-    ) {return(NULL)}
-    #if (input$condition1 == input$condition2) {return(NULL)}
-    
-    
-    t <- NULL
-    method <- NULL
-        t <- rv$resAnaDiff$P.Value
-        t <- t[which(abs(rv$resAnaDiff$logFC) >= rv$seuilLogFC)]
-    
-    ll <- NULL
-
-        if ((input$calibrationMethod == "numeric value") 
-            && !is.null(input$numericValCalibration)) {
-        
-        ll <-catchToList(
-            wrapperCalibrationPlot(t, input$numericValCalibration))
-        rv$errMsgCalibrationPlot <- ll$warnings[grep( "Warning:", ll$warnings)]
-        }
-        else if (input$calibrationMethod == "Benjamini-Hochberg") {
-        
-        ll <-catchToList(wrapperCalibrationPlot(t, 1))
-        rv$errMsgCalibrationPlot <- ll$warnings[grep( "Warning:", ll$warnings)]
-        }else { 
-        ll <-catchToList(wrapperCalibrationPlot(t, input$calibrationMethod))
-        rv$errMsgCalibrationPlot <- ll$warnings[grep( "Warning:", ll$warnings)]
-        }
-
-})
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$calibrationPlot, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
 
 
 
@@ -978,7 +1428,7 @@ output$errMsgCalibrationPlot <- renderUI({
     txt <- NULL
     
     for (i in 1:length(rv$errMsgCalibrationPlot)) {
-    txt <- paste(txt, "toto",rv$errMsgCalibrationPlot[i], "<br>", sep="")
+        txt <- paste(txt, "toto",rv$errMsgCalibrationPlot[i], "<br>", sep="")
     }
     
     div(HTML(txt), style="color:red")
@@ -992,39 +1442,23 @@ output$errMsgCalibrationPlotAll <- renderUI({
     
     txt <- NULL
     for (i in 1:length(rv$errMsgCalibrationPlotAll)) {
-    txt <- paste(txt, rv$errMsgCalibrationPlotAll[i], "<br>", sep="")
+        txt <- paste(txt, rv$errMsgCalibrationPlotAll[i], "<br>", sep="")
     }
-
-div(HTML(txt), style="color:red")
+    
+    div(HTML(txt), style="color:red")
 })
 
 
 #--------------------------------------------------
-output$calibrationPlotAll <- renderPlot({
+output$calibrationPlotAll <- renderImage({
     rv$resAnaDiff
-    rv$seuilLogFC
-    input$diffAnaMethod
-    input$condition1
-    input$condition2
-    
-    
-    if (
-    is.null(rv$seuilLogFC) ||
-    is.null(input$diffAnaMethod) ||
-    is.null(rv$resAnaDiff)
-    ) {return(NULL)}
-    if (input$condition1 == input$condition2) {return(NULL)}
-    
-    t <- NULL
-    t <- rv$resAnaDiff$P.Value
-    t <- t[which(abs(rv$resAnaDiff$logFC) >= rv$seuilLogFC)]
-
-    
-    l <- NULL
-    l <-catchToList(wrapperCalibrationPlot(t, "ALL")  )
-    rv$errMsgCalibrationPlotAll <- l$warnings[grep( "Warning:", l$warnings)]
-
-})
+    input$calibrationMethod
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$calibrationPlotAll, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
 
 
 
@@ -1056,8 +1490,8 @@ output$viewExprs <- DT::renderDataTable({
     input$nDigits
     if (is.null(rv$current.obj)) {return(NULL)}
     if (input$nDigits == T){nDigits = 1e100}else {nDigits = 3}
-    data <- cbind(ID = rownames(fData(rv$current.obj)),
-                        round(exprs(rv$current.obj), 
+    data <- cbind(ID = rownames(Biobase::fData(rv$current.obj)),
+                        round(Biobase::exprs(rv$current.obj), 
                                 digits=nDigits))
     dat <- DT::datatable(data, 
                     options=list(pageLength=DT_pagelength,
@@ -1078,17 +1512,15 @@ output$viewExprs <- DT::renderDataTable({
 #----------------------------------------------
 observe({ 
     input$ValidDiffAna
-    # input$diffAnaMethod
-    # input$condition1
-    # input$condition2
-    
+
     if ((input$ValidDiffAna == 0) ||  is.null(input$ValidDiffAna) ) {
         return(NULL)}
     if (input$condition1 == input$condition2) {return(NULL)}
     
     isolate({
     
-    data <- rv$resAnaDiff
+data <- rv$resAnaDiff
+
     if (is.null(data)) {return (NULL)}
     m <- NULL
     if (input$calibrationMethod == "Benjamini-Hochberg") { m <- 1}
@@ -1199,7 +1631,7 @@ option=list(pageLength=DT_pagelength,
 output$viewpData <- DT::renderDataTable({
     rv$current.obj
     if (is.null(rv$current.obj)) {return(NULL)}
-    as.data.frame(pData(rv$current.obj))
+    as.data.frame(Biobase::pData(rv$current.obj))
 },
 option=list(pageLength=DT_pagelength,
             orderClasses = TRUE,
@@ -1213,7 +1645,7 @@ option=list(pageLength=DT_pagelength,
 output$viewfData <- DT::renderDataTable({
     rv$current.obj
     if (is.null(rv$current.obj)) {return(NULL)}
-    as.data.frame(fData(rv$current.obj))
+    as.data.frame(Biobase::fData(rv$current.obj))
 },
 option=list(pageLength=DT_pagelength,
             orderClasses = TRUE,
@@ -1230,8 +1662,8 @@ option=list(pageLength=DT_pagelength,
 output$viewExprsMissValues <- DT::renderDataTable({
     rv$current.obj
     if (is.null(rv$current.obj)) {return(NULL)}
-    as.data.frame(cbind(ID = rownames(fData(rv$current.obj)),
-                        exprs(rv$current.obj)))
+    as.data.frame(cbind(ID = rownames(Biobase::fData(rv$current.obj)),
+                        Biobase::exprs(rv$current.obj)))
 },
 
 option=list(orderClasses = TRUE,
@@ -1248,10 +1680,10 @@ output$RenderLimmaCond1 <- renderUI({
     if (is.null(rv$current.obj) ) {return(NULL)  }
     
     
-    labels <- unique(pData(rv$current.obj)[,"Label"])
+    labels <- unique(Biobase::pData(rv$current.obj)[,"Label"])
     labels <- setNames(as.list(labels),labels)
     condition1 <- labels[[1]]
-    if ("logFC" %in% names(fData(rv$current.obj) )){
+    if ("logFC" %in% names(Biobase::fData(rv$current.obj) )){
         condition1 <- rv$current.obj@experimentData@other$condition1
     }
     
@@ -1270,10 +1702,10 @@ output$RenderLimmaCond2 <- renderUI({
     if (is.null(rv$current.obj) ) {return(NULL)  }
     
     isolate({
-    labels <- unique(pData(rv$current.obj)[,"Label"])
+    labels <- unique(Biobase::pData(rv$current.obj)[,"Label"])
     labels <- setNames(as.list(labels),labels)
     condition2 <- labels[[2]]
-    if ("logFC" %in% names(fData(rv$current.obj) )){
+    if ("logFC" %in% names(Biobase::fData(rv$current.obj) )){
         condition2 <- rv$current.obj@experimentData@other$condition2
     }
     
@@ -1289,7 +1721,7 @@ output$selectIDforExcelExport <- renderUI({
     rv$current.obj
     if (is.null(rv$current.obj) ) {return(NULL)  }
     selectInput("ID2XLS", "ID for XLS", 
-                choices = colnames(fData(rv$current.obj)))
+                choices = colnames(Biobase::fData(rv$current.obj)))
 })
 
 
@@ -1491,8 +1923,8 @@ output$columnsForProteinDataset <- renderUI({
     rv$current.obj
     if (is.null(rv$current.obj)) {return(NULL)  }
     
-    choices <- colnames(fData(rv$current.obj))
-    names(choices) <- colnames(fData(rv$current.obj))
+    choices <- colnames(Biobase::fData(rv$current.obj))
+    names(choices) <- colnames(Biobase::fData(rv$current.obj))
     selectizeInput("columnsForProteinDataset.box",
                     label = "",
                     choices = choices,
@@ -1694,6 +2126,60 @@ output$helpTextDataID <- renderUI({
 })
 
 
+
+output$infoAboutDemoDataset <- renderUI({
+    input$demoDataset
+    
+    #help("UPSpep25", package="DAPARdata")
+    #tags$iframe(src="Rstudio.pdf", width="900", height="600")
+    
+    
+})
+
+
+
+
+output$overviewDemoDataset <- renderUI({
+    rv$current.obj
+    rv$typeOfDataset
+    if (is.null(rv$current.obj)) {return(NULL)    }
+    
+    isolate({
+        rv$current.obj
+        rv$typeOfDataset
+        NA.count <- apply(data.frame(Biobase::exprs(rv$current.obj)), 
+                          2, 
+                          function(x) length(which(is.na(data.frame(x))==TRUE)) )
+        pourcentage <- 100 * round(sum(NA.count)/
+                                       (dim(Biobase::exprs(rv$current.obj))[1]*
+                                            dim(Biobase::exprs(rv$current.obj))[2]), digits=4)
+        d <- "lines"
+        if (rv$typeOfDataset == "peptide") {d <- "peptides"}
+        else if (rv$typeOfDataset == "protein") {d <- "proteins"}
+        else {d <- "analytes"}
+        
+        nb.empty.lines <- sum(apply(
+            is.na(as.matrix(Biobase::exprs(rv$current.obj))), 1, all))
+        tags$ul(
+            # if (rv$typeOfData != "") {tags$li(paste("This is ", rv$typeOfData, 
+            #                                            "dataset.", sep=" "))}, 
+            tags$li(paste("There are", dim(Biobase::exprs(rv$current.obj))[2], 
+                          " samples in your data.", sep=" ")),
+            
+            tags$li(paste("There are", dim(Biobase::exprs(rv$current.obj))[1], d,
+                          " in your data.", sep=" ")), 
+            tags$li(paste("Percentage of missing values:",
+                          pourcentage , "%", sep=" ")),
+            tags$li(paste("Number of lines with only NA values =",
+                          nb.empty.lines , sep=" "))
+        )
+        
+        
+    })
+})
+
+
+
 ##' Quick overview of the MSnbase object
 ##' @author Florence Combes
 output$overview <- renderUI({
@@ -1704,12 +2190,12 @@ output$overview <- renderUI({
     isolate({
     rv$current.obj
     rv$typeOfDataset
-    NA.count <- apply(data.frame(exprs(rv$current.obj)), 
+    NA.count <- apply(data.frame(Biobase::exprs(rv$current.obj)), 
                         2, 
                         function(x) length(which(is.na(data.frame(x))==TRUE)) )
     pourcentage <- 100 * round(sum(NA.count)/
-                                    (dim(exprs(rv$current.obj))[1]*
-                                    dim(exprs(rv$current.obj))[2]), digits=4)
+                                    (dim(Biobase::exprs(rv$current.obj))[1]*
+                                    dim(Biobase::exprs(rv$current.obj))[2]), digits=4)
     d <- "lines"
     if (rv$typeOfDataset == "peptide") {d <- "peptides"}
     else if (rv$typeOfDataset == "protein") {d <- "proteins"}
@@ -1720,19 +2206,34 @@ output$overview <- renderUI({
     tags$ul(
         # if (rv$typeOfData != "") {tags$li(paste("This is ", rv$typeOfData, 
         #                                            "dataset.", sep=" "))}, 
-        tags$li(paste("There are", dim(exprs(rv$current.obj))[2], 
-                    "samples in your data.", sep=" ")),
+        tags$li(paste("There are", dim(Biobase::exprs(rv$current.obj))[2], 
+                    " samples in your data.", sep=" ")),
         
-        tags$li(paste("There are", dim(exprs(rv$current.obj))[1], d,
-                    "in your data.", sep=" ")), 
+        tags$li(paste("There are", dim(Biobase::exprs(rv$current.obj))[1], d,
+                    " in your data.", sep=" ")), 
         tags$li(paste("Percentage of missing values:",
                     pourcentage , "%", sep=" ")),
         tags$li(paste("Number of lines with only NA values =",
                     nb.empty.lines , sep=" "))
     )
 
+   
     })
 })
+
+
+output$infoAboutAggregationTool <- renderUI({
+    rv$current.obj
+    rv$typeOfDataset
+    if (is.null(rv$current.obj)) {return(NULL)    }
+    
+    if (rv$typeOfDataset == "protein"){
+        tags$h5("Note: the aggregation tool
+                has been disabled because the dataset contains protein quantitative data.")
+    }
+    })
+
+
 
 
 output$overviewNewData <- renderUI({
@@ -1740,33 +2241,52 @@ output$overviewNewData <- renderUI({
     if (is.null(rv$current.obj)) {return(NULL)}
     
     isolate({
-    txt1 <- paste("There is", 
-                dim(exprs(rv$current.obj))[2],
-                "samples in your data.")
-    txt2 <- paste("There is",
-                dim(exprs(rv$current.obj))[1], 
-                "lines in your data.")
-    
-    NA.count<-apply(data.frame(exprs(rv$current.obj)), 
-                    2, 
-                    function(x) length(which(is.na(data.frame(x))==TRUE)) )
-    pourcentage <- 100 * round(sum(NA.count)/
-                                    (dim(exprs(rv$current.obj))[1]*
-                                    dim(exprs(rv$current.obj))[2]), digits=4)
-    txt3 <- paste("Percentage of missing values:",pourcentage , "%")
-    
-    nb.empty.lines <- sum(apply(
-        is.na(as.matrix(exprs(rv$current.obj))), 1, all))
-    txt4 <- NULL
-    if (nb.empty.lines > 0){
         
-        if( nb.empty.lines > 1){
+        verb <- NULL
+        plurial <- NULL
+        
+        
+        if( dim(Biobase::exprs(rv$current.obj))[2] > 1){
+            verb <- "are"
+            plurial <- "s"} else {
+                verb <- "is"
+                plurial <- ""}
+        
+        
+        
+    txt1 <- paste("There ", verb, " " ,
+                dim(Biobase::exprs(rv$current.obj))[2],
+                " sample", plurial, " in your data.", sep="")
+    
+    if( dim(Biobase::exprs(rv$current.obj))[2] > 1){
         verb <- "are"
         plurial <- "s"} else {
             verb <- "is"
             plurial <- ""}
+    txt2 <- paste("There ", verb, " ",
+                dim(Biobase::exprs(rv$current.obj))[1], 
+                " line", plurial, " in your data.", sep="")
+    
+    NA.count<-apply(data.frame(Biobase::exprs(rv$current.obj)), 
+                    2, 
+                    function(x) length(which(is.na(data.frame(x))==TRUE)) )
+    pourcentage <- 100 * round(sum(NA.count)/
+                                    (dim(Biobase::exprs(rv$current.obj))[1]*
+                                    dim(Biobase::exprs(rv$current.obj))[2]), digits=4)
+    txt3 <- paste("Percentage of missing values:",pourcentage , "%")
+    
+    nb.empty.lines <- sum(apply(
+        is.na(as.matrix(Biobase::exprs(rv$current.obj))), 1, all))
+    txt4 <- NULL
+    if (nb.empty.lines > 0){
+        if( nb.empty.lines > 1){
+            verb <- "are"
+            plurial <- "s"} else {
+                verb <- "is"
+                plurial <- ""}
         
-        txt4 <- paste("There ", verb, " : ",
+        
+        txt4 <- paste("There ", verb, " ",
                     nb.empty.lines ," line",plurial," with only NA values !!"
                     ,sep="")
     }
@@ -1784,99 +2304,197 @@ output$overviewNewData <- renderUI({
 
 
 
-output$GlobalPieChart <- renderPlot({
+output$GlobalPieChart <- renderImage({
     rv$current.obj
     input$idBoxContaminants
     input$idBoxReverse
     input$prefixContaminants
     input$prefixReverse
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$propContRev, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
+
+
+######-----------------------------------------------------------------
+output$downloadReport <- downloadHandler(
+    filename = function() {
+        paste('__ProStaR report', sep = '.', switch(
+            input$format, PDF = 'pdf', HTML = 'html', Word = 'docx'
+        ))
+    },
     
+    content = function(file) {
+        src <- normalizePath('report.Rmd')
+        
+        # temporarily switch to the temp dir, in case you do not have write
+        # permission to the current working directory
+        file.copy(src, paste(tempdir(), sessionID, 'report.Rmd',sep="/"))
+        
+        library(rmarkdown)
+        out <- render(paste(tempdir(), sessionID, 'report.Rmd', sep="/"), 
+                      switch(
+            input$format,
+            PDF = pdf_document(), 
+            HTML = html_document(), 
+            Word = word_document()
+        ))
+        file.rename(out, file)
+    }
+)
+
+
+
+output$histoMV_Image_DS <- renderImage({
+    rv$current.obj
     
-    if (is.null(rv$current.obj)){return(NULL)}
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$histoMV_DS, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
+
+
+output$histoMV_Image <- renderImage({
+    rv$current.obj
     
-    proportionConRev(rv$current.obj,
-            input$idBoxContaminants, 
-            input$prefixContaminants, 
-            input$idBoxReverse,
-            input$prefixReverse)
-})
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$histoMV, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
 
 
 ##' distribution of missing values in current.obj
 ##' @author Samuel Wieczorek
-output$histoMV_DS <- renderPlot({
+output$histo.missvalues.per.lines_Image <- renderImage({
     rv$current.obj
-    if (is.null(rv$current.obj)){return(NULL)}
     
-    wrapper.mvHisto(rv$current.obj)
-})
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$histoMVPerLines, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
 
 
 
 ##' distribution of missing values in current.obj
 ##' @author Samuel Wieczorek
-output$histo.missvalues.per.lines_DS <- renderPlot({
+output$histo.missvalues.per.lines.per.conditions_Image <- renderImage({
     rv$current.obj
-    if (is.null(rv$current.obj)){return(NULL)}
-    wrapper.mvPerLinesHisto(rv$current.obj, 
-                            c(2:length(colnames(pData(rv$current.obj)))))
-})
-
-##' distribution of missing values in current.obj
-##' @author Samuel Wieczorek
-output$histo.missvalues.per.lines.per.conditions_DS <- renderPlot({
-    rv$current.obj
-    if (is.null(rv$current.obj)){return(NULL)}
-    wrapper.mvPerLinesHistoPerCondition(rv$current.obj, 
-                    c(2:length(colnames(pData(rv$current.obj)))))
-})
-
-
-
-##' distribution of missing values in current.obj
-##' @author Samuel Wieczorek
-output$histoMV <- renderPlot({
-    rv$current.obj
-    if (is.null(rv$current.obj)){return(NULL)}
     
-    wrapper.mvHisto(rv$current.obj)
-})
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$histoMVPerLinesConditions, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
+
+
+
+output$histoMV_DS_Image <- renderImage({
+    rv$current.obj
+    
+     list(src = paste(tempdir(),sessionID,gGraphicsFilenames$histoMV_DS, sep="/"),
+          contentType = "image/png"
+          #width = width,
+          #height = height,
+          )
+}, deleteFile = FALSE)
+
+
+##' distribution of missing values in current.obj
+##' @author Samuel Wieczorek
+# output$histoMV_DS <- renderPlot({
+#     rv$current.obj
+#     if (is.null(rv$current.obj)){return(NULL)}
+#     
+#     wrapper.mvHisto(rv$current.obj)
+# })
 
 
 
 ##' distribution of missing values in current.obj
 ##' @author Samuel Wieczorek
-output$histo.missvalues.per.lines <- renderPlot({
+output$histo.missvalues.per.lines_DS <- renderImage({
     rv$current.obj
-    if (is.null(rv$current.obj)){return(NULL)}
-    wrapper.mvPerLinesHisto(rv$current.obj, 
-                    c(2:length(colnames(pData(rv$current.obj)))))
-})
+    
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$histoMVPerLines_DS, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
+
+
 
 ##' distribution of missing values in current.obj
 ##' @author Samuel Wieczorek
-output$histo.missvalues.per.lines.per.conditions <- renderPlot({
+output$histo.missvalues.per.lines.per.conditions_DS <- renderImage({
     rv$current.obj
-    if (is.null(rv$current.obj)){return(NULL)}
-    wrapper.mvPerLinesHistoPerCondition(rv$current.obj, 
-                            c(2:length(colnames(pData(rv$current.obj)))))
-})
+    
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$histoMVPerLinesConditions_DS, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
+
+
+
+##' distribution of missing values in current.obj
+##' @author Samuel Wieczorek
+# output$histoMV <- renderPlot({
+#     rv$current.obj
+#     if (is.null(rv$current.obj)){return(NULL)}
+#     
+#     wrapper.mvHisto(rv$current.obj)
+# })
+
+
+
+# ##' distribution of missing values in current.obj
+# ##' @author Samuel Wieczorek
+# output$histo.missvalues.per.lines <- renderPlot({
+#     rv$current.obj
+#     if (is.null(rv$current.obj)){return(NULL)}
+#     wrapper.mvPerLinesHisto(rv$current.obj, 
+#                     c(2:length(colnames(pData(rv$current.obj)))))
+# })
+# 
+# ##' distribution of missing values in current.obj
+# ##' @author Samuel Wieczorek
+# output$histo.missvalues.per.lines.per.conditions <- renderPlot({
+#     rv$current.obj
+#     if (is.null(rv$current.obj)){return(NULL)}
+#     wrapper.mvPerLinesHistoPerCondition(rv$current.obj, 
+#                             c(2:length(colnames(pData(rv$current.obj)))))
+# })
 
 ##' xxxxxxxxxxxxxxxxxxxxxxxx
 ##' @author Samuel Wieczorek
-output$showImageNA <- renderPlot({
+output$showImageNA <- renderImage({
     rv$current.obj
-    if (is.null(rv$current.obj)){return(plot.new())}
     
-    wrapper.mvImage(rv$current.obj)
-})
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$imageNA, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
+
 
 
 ##########################
 output$ChooseLegendForNormTabPanel <- renderUI({
     rv$current.obj
     if (is.null(rv$current.obj)){return(NULL)}
-    .names <- colnames(pData(rv$current.obj))[-1]
+    .names <- colnames(Biobase::pData(rv$current.obj))[-1]
     checkboxGroupInput("legendXAxisNormTabPanel",
                         label = "Choose data to show in legend",
                         choices = .names,
@@ -1935,37 +2553,37 @@ output$choose_Normalization_2 <- renderUI({
 ##' boxplot and densityplot of intensities in current.obj 
 ##' in the normalization panel
 ##' @author Samuel Wieczorek
-output$NormData <- renderPlot({
-    rv$current.obj
-    input$graph.choice.normalization.tab
-    input$legendXAxisNormTabPanel
-    input$legendXAxis
-    if (is.null(rv$current.obj)){return(plot.new())}
-    
-    typeOfGraphics <- input$graph.choice.normalization.tab
-    if (typeOfGraphics == "boxplot"){
-    input$legendXAxisNormTabPanel
-    input$legendXAxis
-    rv$current.obj
-    
-    #.axis <- match(input$legendXAxisNormTabPanel,
-    #colnames(pData(rv$current.obj)))
-    .axis <- input$legendXAxis
-    wrapper.boxPlotD(rv$current.obj,.axis)
-    
-    }else if (typeOfGraphics == "densityplot") {
-    wrapper.densityPlotD(rv$current.obj, 
-                    unique(pData(rv$current.obj)[,"Label"]),
-                    NULL)
-    }
-})
+# output$NormData <- renderImage({
+#     rv$current.obj
+#     input$graph.choice.normalization.tab
+#     input$legendXAxisNormTabPanel
+#     input$legendXAxis
+#     if (is.null(rv$current.obj)){return(plot.new())}
+#     
+#     typeOfGraphics <- input$graph.choice.normalization.tab
+#     if (typeOfGraphics == "boxplot"){
+#     input$legendXAxisNormTabPanel
+#     input$legendXAxis
+#     rv$current.obj
+#     
+#     #.axis <- match(input$legendXAxisNormTabPanel,
+#     #colnames(pData(rv$current.obj)))
+#     .axis <- input$legendXAxis
+#     wrapper.boxPlotD(rv$current.obj,.axis)
+#     
+#     }else if (typeOfGraphics == "densityplot") {
+#     wrapper.densityPlotD(rv$current.obj, 
+#                     unique(pData(rv$current.obj)[,"Label"]),
+#                     NULL)
+#     }
+# })
 
 #------------------------------------------------------
 output$ChooseLegendForAxis <- renderUI({
     rv$current.obj
     if (is.null(rv$current.obj)){return(NULL)}
     isolate(rv$current.obj)
-    .names <- colnames(pData(rv$current.obj))[-1]
+    .names <- colnames(Biobase::pData(rv$current.obj))[-1]
     tags$head(tags$link(rel="stylesheet", type="text/css", 
                         href="css/overrides.css"))
     
@@ -1981,7 +2599,7 @@ output$ChooseLegendForAxis_DS <- renderUI({
     rv$current.obj
     if (is.null(rv$current.obj)){return(NULL)}
     isolate(rv$current.obj)
-    .names <- colnames(pData(rv$current.obj))[-1]
+    .names <- colnames(Biobase::pData(rv$current.obj))[-1]
     tags$head(tags$link(rel="stylesheet", type="text/css", 
                         href="css/overrides.css"))
     
@@ -1995,41 +2613,32 @@ output$ChooseLegendForAxis_DS <- renderUI({
 
 ##' boxplot of intensities in current.obj
 ##' @author Samuel Wieczorek
-output$viewBoxPlot_DS <- renderPlot({
-    input$legendXAxis_DS
+output$viewBoxPlot_DS <- renderImage({
     rv$current.obj
-    #input$whichGroup2Color
-    
-    if (is.null(rv$current.obj)){return(NULL)}
-     wrapper.boxPlotD(rv$current.obj,  input$legendXAxis_DS)
-    
-    
-})
+    input$legendXAxis_DS
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$boxplot, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
+
+
 
 
 ##' Distribution of intensities in current.obj
 ##' @author Samuel Wieczorek
-output$viewDensityplot_DS <- renderPlot({
+output$viewDensityplot_DS <- renderImage({
     rv$current.obj
-    input$lab2Show
-    input$whichGroup2Color
-    if (is.null(rv$current.obj) || (length(input$lab2Show) == 0))
-    {return(plot.new())}
+    input$lab2Show_DS
+    input$whichGroup2Color_DS
     
-    
-    if (input$whichGroup2Color == "Condition"){
-    labs <- pData(rv$current.obj)[,"Label"]
-    }else {
-    labs <- paste(pData(rv$current.obj)[,"Label"],
-                    pData(rv$current.obj)[,"Bio.Rep"],
-                    pData(rv$current.obj)[,"Tech.Rep"],
-                    pData(rv$current.obj)[,"Analyt.Rep"],
-                    sep= "_")
-    }
-    
-    wrapper.densityPlotD(rv$current.obj, labs, as.numeric(input$lab2Show), 
-                        input$whichGroup2Color)
-})
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$densityPlot, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
 
 
 
@@ -2037,155 +2646,100 @@ output$viewDensityplot_DS <- renderPlot({
 
 ##' boxplot of intensities in current.obj
 ##' @author Samuel Wieczorek
-output$viewBoxPlot <- renderPlot({
+output$viewBoxPlotNorm <- renderImage({
     input$legendXAxis
     rv$current.obj
     input$whichGroup2Color
-    
-    if (is.null(rv$current.obj)){return(plot.new())}
-    
-    if( is.null(input$legendXAxis) || is.null(input$whichGroup2Color))
-    { wrapper.boxPlotD(rv$current.obj)
-    } else {
-    wrapper.boxPlotD(rv$current.obj,input$legendXAxis ,input$whichGroup2Color)
-    }
-    
-})
+    input$normalization.method
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$boxplotNorm, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
+
 
 
 ##' Distribution of intensities in current.obj
 ##' @author Samuel Wieczorek
-output$viewDensityplot<- renderPlot({
+output$viewDensityplotNorm<- renderImage({
     rv$current.obj
     input$lab2Show
     input$whichGroup2Color
+    input$normalization.method
     
-    if (is.null(rv$current.obj) ){return(plot.new())}
-    
-    
-    if(is.null(input$whichGroup2Color) && is.null(input$lab2Show))
-    { 
-    labs <- pData(rv$current.obj)[,"Label"]
-    wrapper.densityPlotD(rv$current.obj, labs)
-    } else {
-    if (input$whichGroup2Color == "Condition")
-            {
-            labs <- pData(rv$current.obj)[,"Label"]
-    }else {
-            labs <- paste(pData(rv$current.obj)[,"Label"],
-                    pData(rv$current.obj)[,"Bio.Rep"],
-                    pData(rv$current.obj)[,"Tech.Rep"],
-                    pData(rv$current.obj)[,"Analyt.Rep"],
-                    sep= "_")
-            }
-    wrapper.densityPlotD(rv$current.obj, labs, as.numeric(input$lab2Show),
-                        input$whichGroup2Color)
-    }
-
-})
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$densityPlotNorm, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
 
 #######################
-output$viewComparisonNorm<- renderPlot({
+output$viewComparisonNorm<- renderImage({
     rv$current.obj
     input$whichGroup2Color
     input$lab2Show
+    input$normalization.method
     
-    if (is.null(rv$current.obj) ){return(plot.new())}
-    
-    if(is.null(input$whichGroup2Color) && is.null(input$lab2Show))
-    { 
-    labs <- pData(rv$current.obj)[,"Label"]
-    compareNormalizationD(exprs(rv$dataset[[input$datasets]]), 
-                        exprs(rv$current.obj), 
-                        labs)
-    } else {
-    if (input$whichGroup2Color == "Condition"){
-        labs <- pData(rv$current.obj)[,"Label"]
-    }else {
-        labs <- paste(pData(rv$current.obj)[,"Label"],
-                    pData(rv$current.obj)[,"Bio.Rep"],
-                    pData(rv$current.obj)[,"Tech.Rep"],
-                    pData(rv$current.obj)[,"Analyt.Rep"],
-                    sep= "_")
-    }
-    compareNormalizationD(exprs(rv$dataset[[input$datasets]]), 
-                            exprs(rv$current.obj), 
-                            labs,
-                            as.numeric(input$lab2Show), 
-                            input$whichGroup2Color)
-    }
-    
-    
-    
-})
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$compareNorm, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
 
 
 
 
-
-
-##' boxplot of intensities in current.obj
-##' @author Samuel Wieczorek
-output$viewNAbyMean <- renderPlot({
-    rv$current.obj
-    input$seuilMNAR
-    if (is.null(rv$current.obj)){return(plot.new())}
-    wrapper.mvTypePlot(rv$current.obj,input$seuilMNAR)
-})
 
 
 ##' distribution of the variance in current.obj
 ##' 
 ##' @author Samuel Wieczorek
-output$viewDistVariance <- renderPlot({
+output$viewDistVariance <- renderImage({
     rv$current.obj
-    if (is.null(rv$current.obj))
-    {return(plot.new())}
-    
-    wrapper.varianceDistD(rv$current.obj)
-})
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$varDist, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
 
 
 ##' Draw a correlation matrix of intensities in current.obj
 ##' 
 ##' @author Samuel Wieczorek
-output$corrMatrix <- renderPlot({
+output$corrMatrix <- renderImage({
     input$expGradientRate
     rv$current.obj
-    if (is.null(rv$current.obj)){return(NULL)}
-    if (is.null(input$expGradientRate)){return(NULL)}
-    wrapper.corrMatrixD(rv$current.obj, rate = input$expGradientRate)
-})
+    
+    
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$corrMatrix, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
+
 
 
 ##' Draw a heatmap of current data
 ##' 
 ##' @author Samuel Wieczorek
-output$heatmap <- renderPlot({
+output$heatmap <- renderImage({
     rv$current.obj
     input$linkage
     input$distance
+    
+    
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$heatmap, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
 
-    
-    if (is.null(rv$current.obj) 
-        || is.null(input$linkage) 
-        || is.null(input$distance)) {return(NULL)
-#return(plot.new())
-}
-    
-    # if (getNumberOfEmptyLines(exprs(rv$current.obj)) != 0) {
-    # return(NULL)
-    # # plot.new()
-    # }
-    # else {  
-    # plot.new()
-    wrapper.heatmapD(rv$current.obj,
-                    input$distance, 
-                    input$linkage,
-                    TRUE) 
-    # buildHeatmapPlot()
-    #}
-})  
 
 ##' Select the labels to be highlighted in densityplots
 ##' @author Samuel Wieczorek
@@ -2206,7 +2760,7 @@ output$nGroup_DS <- renderUI({
     rv$current.obj
     if (is.null(rv$current.obj) ) {return(NULL) }
     
-    radioButtons("whichGroup2Color",
+    radioButtons("whichGroup2Color_DS",
                 "Plot to show",
                 choices=list("By condition" = "Condition",
                             "By replicate" = "Replicate"))
@@ -2228,22 +2782,20 @@ output$topNOption <- renderUI({
 ##' @author Samuel Wieczorek
 output$nShow_DS <- renderUI({
     rv$current.obj
-    #input$whichGroup2Color
     if (is.null(rv$current.obj) ) {return(NULL) }
     
     isolate({
     rv$current.obj
-    labs <- paste(pData(rv$current.obj)[,"Label"],
-                    pData(rv$current.obj)[,"Bio.Rep"],
-                    pData(rv$current.obj)[,"Tech.Rep"],
-                    pData(rv$current.obj)[,"Analyt.Rep"],
+    labs <- paste(Biobase::pData(rv$current.obj)[,"Label"],
+                    Biobase::pData(rv$current.obj)[,"Bio.Rep"],
+                    Biobase::pData(rv$current.obj)[,"Tech.Rep"],
+                    Biobase::pData(rv$current.obj)[,"Analyt.Rep"],
                     sep= "_")
     
-    #label.names <- unique(pData(rv$current.obj)[,"Label"])
     label.names <- setNames(as.list(c(1:length(labs))),labs)
     
     
-    checkboxGroupInput("lab2Show"
+    checkboxGroupInput("lab2Show_DS"
                         , label = "Select data to show"
                         , choices = label.names
                         , selected = unlist(label.names))
@@ -2258,18 +2810,16 @@ output$nShow_DS <- renderUI({
 ##' @author Samuel Wieczorek
 output$nShow <- renderUI({
     rv$current.obj
-    #input$whichGroup2Color
     if (is.null(rv$current.obj) ) {return(NULL) }
     
     isolate({
     rv$current.obj
-labs <- paste(pData(rv$current.obj)[,"Label"],
-pData(rv$current.obj)[,"Bio.Rep"],
-                            pData(rv$current.obj)[,"Tech.Rep"],
-                            pData(rv$current.obj)[,"Analyt.Rep"],
+labs <- paste(Biobase::pData(rv$current.obj)[,"Label"],
+Biobase::pData(rv$current.obj)[,"Bio.Rep"],
+                            Biobase::pData(rv$current.obj)[,"Tech.Rep"],
+                            Biobase::pData(rv$current.obj)[,"Analyt.Rep"],
                             sep= "_")
 
-    #label.names <- unique(pData(rv$current.obj)[,"Label"])
     label.names <- setNames(as.list(c(1:length(labs))),labs)
 
 
@@ -2318,7 +2868,7 @@ observe({
     rv$current.obj
     if (is.null(rv$current.obj)){return(NULL)}
     
-    if ("P.Value"  %in% names(fData(rv$current.obj))){
+    if ("P.Value"  %in% names(Biobase::fData(rv$current.obj))){
     
     updateSelectInput(session,"diffAnaMethod",
                         selected =  rv$current.obj@experimentData@other$method)
@@ -2326,14 +2876,14 @@ observe({
     updateNumericInput(session,
                     "seuilPVal",
                     min = 0,
-                    max = max(-log10(fData(rv$current.obj)$P.Value)),
+                    max = max(-log10(Biobase::fData(rv$current.obj)$P.Value)),
                     value = rv$current.obj@experimentData@other$seuil.p.value, 
                     step=0.1)
     
     updateNumericInput(session,
                     "seuilLogFC", 
                     min = 0, 
-                    max = max(abs(fData(rv$current.obj)$logFC)), 
+                    max = max(abs(Biobase::fData(rv$current.obj)$logFC)), 
                     value = rv$current.obj@experimentData@other$seuil.logFC, 
                     step=0.1)
     }
@@ -2342,10 +2892,12 @@ observe({
 
 observe({
     if (!is.null(input$seuilPVal)){rv$seuilPVal <- input$seuilPVal}
+
 })
 
 observe({
     if (!is.null(input$seuilLogFC)){rv$seuilLogFC <- input$seuilLogFC}
+
 })
 
 
@@ -2363,31 +2915,31 @@ output$nbSelectedItems <- renderUI({
     if (is.null( input$diffAnaMethod) || (input$diffAnaMethod == "None")){
         return(NULL)}
     p <- NULL
-  
-        p <- rv$resAnaDiff
+    
+    p <- rv$resAnaDiff
     upItemsPVal <- NULL
     upItemsLogFC <- NULL
-   
-   
-        upItemsLogFC <- which(abs(p$logFC) >= rv$seuilLogFC)
-
     
     
-    nbTotal <- nrow(exprs(rv$current.obj))
+    upItemsLogFC <- which(abs(p$logFC) >= rv$seuilLogFC)
+    
+    
+    
+    nbTotal <- nrow(Biobase::exprs(rv$current.obj))
     nbSelected <- NULL
     t <- NULL
-
-        t <- upItemsLogFC
-
+    
+    t <- upItemsLogFC
+    
     
     nbSelected <- length(t)
     
     txt <- paste("Total number of ",rv$typeOfDataset, "(s) = ", 
-                nbTotal,"<br>",
-                "Number of selected ",rv$typeOfDataset, "(s) = ", 
-                nbSelected,"<br>",
-                "Number of non selected ",rv$typeOfDataset, "(s) = ", 
-                (nbTotal-nbSelected), sep="")
+                 nbTotal,"<br>",
+                 "Number of selected ",rv$typeOfDataset, "(s) = ", 
+                 nbSelected,"<br>",
+                 "Number of non selected ",rv$typeOfDataset, "(s) = ", 
+                 (nbTotal-nbSelected), sep="")
     HTML(txt)
 })
 
@@ -2407,7 +2959,7 @@ output$nbSelectedItemsStep3 <- renderUI({
         p$P.Value <- fData(rv$current.obj)$P.Value
         p$logFC <- fData(rv$current.obj)$logFC
     }else {
-
+        
         p <- rv$resAnaDiff
     }
     
@@ -2415,12 +2967,12 @@ output$nbSelectedItemsStep3 <- renderUI({
     upItemsPVal <- NULL
     upItemsLogFC <- NULL
     
-
-        upItemsPVal <- which(-log10(p$P.Value) >= rv$seuilPVal)
-        upItemsLogFC <- which(abs(p$logFC) >= rv$seuilLogFC)
-
     
-    nbTotal <- nrow(exprs(rv$current.obj))
+    upItemsPVal <- which(-log10(p$P.Value) >= rv$seuilPVal)
+    upItemsLogFC <- which(abs(p$logFC) >= rv$seuilLogFC)
+    
+    
+    nbTotal <- nrow(Biobase::exprs(rv$current.obj))
     nbSelected <- NULL
     t <- NULL
     
@@ -2434,13 +2986,14 @@ output$nbSelectedItemsStep3 <- renderUI({
     nbSelected <- length(t)
     
     txt <- paste("Total number of ", rv$typeOfDataset, " = ", 
-                nbTotal,"<br>",
-                "Number of selected ", rv$typeOfDataset, " = ", 
-                nbSelected,"<br>",
-                "Number of non selected ", rv$typeOfDataset, " = ", 
-                (nbTotal-nbSelected), sep="")
+                 nbTotal,"<br>",
+                 "Number of selected ", rv$typeOfDataset, " = ", 
+                 nbSelected,"<br>",
+                 "Number of non selected ", rv$typeOfDataset, " = ", 
+                 (nbTotal-nbSelected), sep="")
     HTML(txt)
 })
+
 
 
 
@@ -2451,7 +3004,7 @@ observe({
     isolate({
     
     #Si on a deja des pVal, alors, ne pas recalculer 
-    if ("logFC" %in% names(fData(rv$current.obj) )){
+    if ("logFC" %in% names(Biobase::fData(rv$current.obj) )){
         updateNumericInput(session, 
             "seuilLogFC",
             value= rv$current.obj@experimentData@other$threshold.logFC)
@@ -2478,33 +3031,25 @@ observe({
 
 
 
-
-#-------------------------------------------------------------------
-output$volcanoplot <- renderPlot({
+output$volcanoplot <- renderImage({
     rv$seuilLogFC
     input$condition1
     input$condition2
     input$diffAnaMethod
     rv$resAnaDiff
     
-    if (length(rv$resAnaDiff$logFC) == 0)
-        {return(NULL)}
-    if (input$condition1 == input$condition2) {return(NULL)}
-    if (is.null(input$condition1)) { return(NULL)}
-    if (is.null(input$condition2)) { return(NULL)}
     
-    if (is.null(rv$seuilLogFC) || is.na(rv$seuilLogFC)) { return (NULL)}
-    
-        cond <- c(input$condition1, input$condition2)
-        diffAnaVolcanoplot(logFC = rv$resAnaDiff$logFC, 
-                           pVal = rv$resAnaDiff$P.Value, 
-                           threshold_logFC = rv$seuilLogFC,
-                            conditions = cond)
-
-})
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$volcanoPlot_1, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
 
 
-output$volcanoplotStep3 <- renderPlot({
+
+
+output$volcanoplotStep3 <- renderImage({
     
     rv$seuilPVal
     rv$seuilLogFC
@@ -2513,49 +3058,52 @@ output$volcanoplotStep3 <- renderPlot({
     input$diffAnaMethod
     rv$resAnaDiff
     
-    if (length(rv$resAnaDiff$logFC) == 0)
-    {return(NULL)}
-    if (is.null(input$condition1) ||is.null(input$condition2))
-    {return(NULL)}
-    if (input$condition1 == input$condition2) {return(NULL)}
-    if (is.null(rv$seuilPVal) || is.na(rv$seuilPVal)) { return (NULL)}
-    if (is.null(rv$seuilLogFC) || is.na(rv$seuilLogFC)) { return (NULL)}
     
-    isolate({
-    
-    #Si on a deja des pVal, alors, ne pas recalculer 
-    if ("logFC" %in% names(fData(rv$current.obj) )){
-        diffAnaVolcanoplot(fData(rv$current.obj)$logFC,
-                    fData(rv$current.obj)$P.Value, 
-                    rv$current.obj@experimentData@other$threshold.p.value,
-                    rv$current.obj@experimentData@other$threshold.logFC,
-                    c(rv$current.obj@experimentData@other$condition1,
-                    rv$current.obj@experimentData@other$condition2)
-        )
-    }else{
-        p <- rv$resAnaDiff
-        cond <- c(input$condition1, input$condition2)
-        
-        diffAnaVolcanoplot(p$logFC, 
-                            p$P.Value, 
-                            rv$seuilPVal, 
-                            rv$seuilLogFC,
-                            cond)
-    }
-    })
-})
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$volcanoPlot_3, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
 
+
+output$disableAggregationTool <- renderUI({
+    rv$current.obj
+    
+    if (!is.null(rv$current.obj))
+    {
+        if (rv$current.obj@experimentData@other$typeOfData == "protein")
+        {
+            disable(selector = "#navPage li a[data-value=Aggregation]")
+            tags$style(type="text/css","#navPage li a[data-value=Aggregation] { color:lightgrey;}")
+            
+            
+        } else {
+            enable(selector = "#navPage li a[data-value=Aggregation]")
+            
+        }
+    }
+    
+})
 
 #-------------------------------------------------------------------
 output$aboutText <- renderUI({
-    busyIndicator("Calculation In progress",wait = 0)
+    busyIndicator("Calculation in progress",wait = 0)
     
     t <- sessionInfo()
     daparVersion <- t$otherPkgs$DAPAR$Version
     ProstarVersion <- installed.packages()["Prostar","Version"]
     
     
-    text <- paste("<strong>DAPAR</strong> and <strong>ProStaR</strong> form a 
+    text <- paste("<strong>To cite DAPAR and ProStaR software:</strong><br> 
+S. Wieczorek, F. Combes, C. Lazar, Q. Giai-Gianetto, L. Gatto, 
+        A. Dorffer, A.-M. Hesse, Y. Coute, M. Ferro, C. Bruley, T. Burger. 
+                  <i>\"DAPAR & ProStaR: software to perform statistical analyses in <br>
+                  quantitative discovery proteomics\"</i>, under (minor) revision, 
+                  <i>Bioinformatics</i>, 2016
+                  
+<br><br><br>
+<strong>DAPAR</strong> and <strong>ProStaR</strong> form a 
                 software suite for quantitative analysis of mass spectrometry 
                 based proteomics, more specifically designed to process 
                 relative quantitative data from discovery experiments.<br> <br>
@@ -2636,19 +3184,18 @@ output$limmaplot <- DT::renderDataTable({
     # isolate({
     t <- NULL
     # Si on a deja des pVal, alors, ne pas recalculer avec ComputeWithLimma
-    if (isContainedIn(c("logFC","P.Value"),names(fData(rv$current.obj)) ) ){
-    selectedItems <- (which(fData(rv$current.obj)$Significant == TRUE)) 
+    if (isContainedIn(c("logFC","P.Value"),names(Biobase::fData(rv$current.obj)) ) ){
+    selectedItems <- (which(Biobase::fData(rv$current.obj)$Significant == TRUE)) 
     t <- data.frame(id =  
-                        rownames(exprs(rv$current.obj))[selectedItems],
-                    fData(rv$current.obj)[selectedItems,
+                        rownames(Biobase::exprs(rv$current.obj))[selectedItems],
+                    Biobase::fData(rv$current.obj)[selectedItems,
                     c("logFC", "P.Value", "Significant")])
         } else{
-    #data <- RunDiffAna()
-    data <- rv$resAnaDiff
+            data <- rv$resAnaDiff
     upItems1 <- which(-log10(data$P.Value) >= rv$seuilPVal)
     upItems2 <- which(abs(data$logFC) >= rv$seuilLogFC)
     selectedItems <- intersect(upItems1, upItems2)
-    t <- data.frame(id =  rownames(exprs(rv$current.obj))[selectedItems],
+    t <- data.frame(id =  rownames(Biobase::exprs(rv$current.obj))[selectedItems],
                     data[selectedItems,])
     }
     t
@@ -2659,6 +3206,24 @@ isContainedIn <- function(strA, strB){
     return (all(strA %in% strB))
 }
 
+
+
+
+##' boxplot of intensities in current.obj
+##' @author Samuel Wieczorek
+output$viewNAbyMean <- renderImage({
+    rv$current.obj
+    
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$MVtypePlot, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
+
+
+
+
 # ---- Download of only significat data --------------
 output$linkWelch <- renderUI({
     input$ExportWelchTest
@@ -2667,7 +3232,7 @@ output$linkWelch <- renderUI({
     saveMSnset(input$filenameWelchData,
                 gFileExtension$msnset,
                 rv$current.obj[
-                which(fData(rv$current.obj)$Significant.Welch == TRUE)])
+                which(Biobase::fData(rv$current.obj)$Significant.Welch == TRUE)])
     filename <- paste(input$filenameWelchData, gFileExtension$msnset, sep="")
     
     completeFilename <- paste(rv$dirnameforlink,filename, sep="/")
@@ -2682,7 +3247,7 @@ output$linkLimma <- renderUI({
     
     saveMSnset(input$filenameLimmaData, gFileExtension$msnset, 
                 rv$current.obj[
-                which(fData(rv$current.obj)$Significant.limma == TRUE)])
+                which(Biobase::fData(rv$current.obj)$Significant.limma == TRUE)])
     filename <- paste(input$filenameLimmaData, gFileExtension$msnset, sep="")
     completeFilename <- paste(rv$dirnameforlink,filename, sep="/")
     a(filename, href=completeFilename)
@@ -2691,7 +3256,6 @@ output$linkLimma <- renderUI({
 
 # store the object in binary file
 saveMSnset <- function(name, fileExt, obj ){
-    
     saveRDS(obj,file=paste(rv$dirname,"/", name, fileExt,sep=""))
     return(obj)
 }
@@ -2704,7 +3268,6 @@ observe({
     if (((GetExtension(input$file1$name)== "xls") 
         || (GetExtension(input$file1$name) == "xlsx") ) 
         && is.null(input$XLSsheets)) {return(NULL)  }
-    
     
     ClearMemory()
     ext <- GetExtension(input$file1$name)
@@ -2773,14 +3336,14 @@ GetMaxValueThresholdFilter <- function(){
     isolate({
     input$ChooseFilters
     if (input$ChooseFilters == gFilterWholeMat) { 
-        vMax <- ncol(exprs(rv$current.obj))}
+        vMax <- ncol(Biobase::exprs(rv$current.obj))}
     else if (input$ChooseFilters == gFilterAllCond 
                 || input$ChooseFilters == gFilterOneCond){ 
         ll <- NULL
-        for (i in 1:length(unique(pData(rv$current.obj)$Label))){
+        for (i in 1:length(unique(Biobase::pData(rv$current.obj)$Label))){
         ll <- c(ll, length(which(
-            pData(rv$current.obj)$Label==
-            unique(pData(rv$current.obj)$Label)[i])))
+            Biobase::pData(rv$current.obj)$Label==
+            unique(Biobase::pData(rv$current.obj)$Label)[i])))
         }
         
         vMax <- min(ll)
@@ -3008,7 +3571,7 @@ output$chooseProteinId <- renderUI({
     
     selectInput("proteinId", 
                 "Choose the protein ID",
-                choices = c("None",colnames(fData(rv$current.obj))))
+                choices = c("None",colnames(Biobase::fData(rv$current.obj))))
 })
 
 observe({
@@ -3134,34 +3697,34 @@ output$aggregationStats <- renderUI ({
     text <- paste("<ul style=\"list-style-type:disc;\">
                 <li>
                 Number of peptides: ", 
-                nrow(matAdj$matWithSharedPeptides),
+                nrow(rv$matAdj$matWithSharedPeptides),
                 "</li>
 
                 <li>
                 Number of unique peptides: ", 
-                nrow(matAdj$matWithUniquePeptides),
+                nrow(rv$matAdj$matWithUniquePeptides),
                 "</li>
 
 
                 <li>
                 Number of shared peptides: ",
-                nrow(matAdj$matWithSharedPeptides)
-                -nrow(matAdj$matWithUniquePeptides),
+                nrow(rv$matAdj$matWithSharedPeptides)
+                -nrow(rv$matAdj$matWithUniquePeptides),
                 "</li>
 
                 <li>
-                Number of proteins:  ", ncol(matAdj$matWithSharedPeptides),
+                Number of proteins:  ", ncol(rv$matAdj$matWithSharedPeptides),
                 " </li>
 
                 <li>
                 Number of proteins only defined by unique peptides: ", 
-                ncol(matAdj$matWithUniquePeptides), 
+                ncol(rv$matAdj$matWithUniquePeptides), 
                 "</li>
 
                 <li>
                 Number of proteins only defined by shared peptides:  ", 
-                ncol(matAdj$matWithSharedPeptides)
-                - ncol(matAdj$matWithUniquePeptides), 
+                ncol(rv$matAdj$matWithSharedPeptides)
+                - ncol(rv$matAdj$matWithUniquePeptides), 
                 "</li>
 
                 </ul>" , sep="")
@@ -3172,30 +3735,25 @@ output$aggregationStats <- renderUI ({
     HTML(text)
     })
 
-output$aggregationPlotShared <- renderPlot({
-    input$proteinId
-    rv$current.obj
-    rv$matAdj
-    if (is.null( input$proteinId) || (input$proteinId == "None") || is.null(rv$matAdj))
-    {return(NULL)}
-    if (is.null( rv$current.obj)){return(NULL)}
-    #matAdj <- ComputeAdjacencyMatrix()
-    GraphPepProt(rv$matAdj$matWithSharedPeptides)
-    
-})
+output$aggregationPlotShared <- renderImage({
+   rv$matAdj
+   
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$AgregMatSharedPeptides, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
 
-output$aggregationPlotUnique <- renderPlot({
-    input$proteinId
-    rv$current.obj
-    rv$matAdj
-    if (is.null( input$proteinId) || (input$proteinId == "None") || is.null(rv$matAdj))
-    {return(NULL)}
-    if (is.null( rv$current.obj)){return(NULL)}
-    #matAdj <- ComputeAdjacencyMatrix()
-    GraphPepProt(rv$matAdj$matWithUniquePeptides)
+output$aggregationPlotUnique <- renderImage({
+   rv$matAdj
+    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$AgregMatUniquePeptides, sep="/"),
+         contentType = "image/png"
+         #width = width,
+         #height = height,
+    )
+}, deleteFile = FALSE)
     
-})
-
 
 
 
@@ -3243,8 +3801,8 @@ output$id_Contaminants <- renderUI({
     rv$current.obj
     if (is.null(rv$current.obj)) {return(NULL)  }
     
-    .choices <- c("",colnames(fData(rv$current.obj)))
-    names(.choices) <- c("",colnames(fData(rv$current.obj)))
+    .choices <- c("",colnames(Biobase::fData(rv$current.obj)))
+    names(.choices) <- c("",colnames(Biobase::fData(rv$current.obj)))
     selectInput("idBoxContaminants", 
                 label = "Choose column", 
                 choices = .choices , 
@@ -3256,8 +3814,8 @@ output$id_Reverse <- renderUI({
     rv$current.obj
     if (is.null(rv$current.obj)) {return(NULL)  }
     
-    .choices <- c("",colnames(fData(rv$current.obj)))
-    names(.choices) <- c("",colnames(fData(rv$current.obj)))
+    .choices <- c("",colnames(Biobase::fData(rv$current.obj)))
+    names(.choices) <- c("",colnames(Biobase::fData(rv$current.obj)))
     selectInput("idBoxReverse", 
                 label = "Choose column", 
                 choices = .choices , 
@@ -3298,12 +3856,12 @@ output$DS_PlotHeatmap <- renderUI({
     rv$current.obj
 
     if (is.null(rv$current.obj)) {return(plot.new())}
-    if (getNumberOfEmptyLines(exprs(rv$current.obj)) != 0) {return (NULL)}
+    if (getNumberOfEmptyLines(Biobase::exprs(rv$current.obj)) != 0) {return (NULL)}
     
     conditionalPanel(
-        condition = TRUE,
-        busyIndicator("Calculation In progress",wait = 0),
-        plotOutput("heatmap", width = "900px", height = "600px")
+        condition = "true",
+        busyIndicator("Calculation in progress",wait = 0),
+        imageOutput("heatmap", width = "900px", height = "600px")
     )
 })
 
@@ -3440,63 +3998,58 @@ ConditionTabPanel <- reactive({
 ##' @author Samuel Wieczorek
 observe({
     input$missing.value.algorithm
-    rv$current.obj
     input$datasets
+    input$perform.imputation.button
     
     if (is.null(input$perform.imputation.button) ){return(NULL)}
     if (input$perform.imputation.button == 0){return(NULL)}
     if (is.null(input$missing.value.algorithm) ){return(NULL)}
-    if (is.null(rv$current.obj) ){return(NULL)}
     if (is.null(input$datasets) ){return(NULL)}
     
     isolate({
-    
-    
-    result = tryCatch(
-        {
         
-        
-       
-    .temp <- unlist(strsplit(input$missing.value.algorithm, " - "))
-    if (.temp[1] == "None"){
-        rv$current.obj <- rv$dataset[[input$datasets]]
-    } else {
-        if ((.temp[1] == "LeftCensored") || (.temp[1] == "RandomOccurence")) 
-        {
-        
-            busyIndicator("Calculation In progress",wait = 0)
-            rv$current.obj <- wrapper.mvImputation(
-                                rv$dataset[[input$datasets]],
-                                .temp[2])
-            
-            #write log command file
-            writeToCommandLogFile(
-                paste("current.obj <- wrapper.mvImputation(",
-                      "rv$dataset[['",
-                      input$datasets, 
-                      "']],'",.temp[2],"')",
-                      sep="")
-            )
-            
-            updateSelectInput(session, 
-                            "missing.value.algorithm", 
-                            selected = input$missing.value.algorithm)
-            
-        }
-        else if (input$missing.value.type == "Mix")
-        {}
-    }
-        }
-        , warning = function(w) {
-            print(w)
-        }, error = function(e) {
-            shinyjs::info(paste("3542",e))
-        }, finally = {
-            #cleanup-code
-        
+        result = tryCatch(
+            {
+                .temp <- unlist(strsplit(input$missing.value.algorithm, " - "))
+                if (.temp[1] == "None"){
+                    rv$current.obj <- rv$dataset[[input$datasets]]
+                } else {
+                    if ((.temp[1] == "LeftCensored") || (.temp[1] == "RandomOccurence")) 
+                    {
+                        
+                        busyIndicator("Calculation In progress",wait = 0)
+                        rv$current.obj <- wrapper.mvImputation(
+                            rv$dataset[[input$datasets]],
+                            .temp[2])
+                        
+                        #write log command file
+                        writeToCommandLogFile(
+                            paste("current.obj <- wrapper.mvImputation(",
+                                  "rv$dataset[['",
+                                  input$datasets, 
+                                  "']],'",.temp[2],"')",
+                                  sep="")
+                        )
+                        
+                        updateSelectInput(session, 
+                                          "missing.value.algorithm", 
+                                          selected = input$missing.value.algorithm)
+                        
+                    }
+                    else if (input$missing.value.type == "Mix")
+                    {}
                 }
-
-    )
+            }
+            , warning = function(w) {
+                print(w)
+            }, error = function(e) {
+                shinyjs::info(e)
+            }, finally = {
+                #cleanup-code
+                
+            }
+            
+        )
     })
 })
 
@@ -3536,6 +4089,17 @@ observe({
 
 
 
+
+output$ChooseAggregationMethod <- renderUI({
+    rv$current.obj
+    if (is.null(rv$current.obj)) {return (NULL)}
+    
+    selectInput("aggregationMethod",
+                "Aggregation methods",
+                choices =  gAgregateMethod)
+})
+
+
 output$AggregationSideBar_Step1 <-  renderUI({
     rv$current.obj
     if (is.null(rv$current.obj) || 
@@ -3551,9 +4115,7 @@ output$AggregationSideBar_Step1 <-  renderUI({
     checkboxInput("checkSharedPeptides",
                   "Include shared peptides",
                   value = FALSE),
-    selectInput("aggregationMethod",
-                "Aggregation methods",
-                choices =  gAgregateMethod),
+    uiOutput("ChooseAggregationMethod"),
     uiOutput("topNOption"),
     actionButton("perform.aggregation","Perform aggregation")
     )
@@ -3579,12 +4141,12 @@ output$AggregationWellPanel_Step1 <- renderUI({
                          column(width=6, h4("Only unique peptides")),
                          column(width=6, h4("All (unique & shared) peptides"))
                      ),
-                     busyIndicator("Calculation In progress",wait = 0),
+                     busyIndicator("Calculation in progress",wait = 0),
                      fluidRow(
-                         column(width=6, plotOutput("aggregationPlotUnique")),
-                         column(width=6, plotOutput("aggregationPlotShared"))
+                         column(width=6, imageOutput("aggregationPlotUnique")),
+                         column(width=6, imageOutput("aggregationPlotShared"))
                      ),
-                     # uiOutput("aggregationStats"),
+                      uiOutput("aggregationStats"),
                      uiOutput("ObserverAggregationDone")
                      )
     } else {

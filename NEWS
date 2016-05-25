@@ -1,4 +1,15 @@
-CHANGES IN VERSION 1.3.18 
+CHANGES IN VERSION 1.4.1 
+-------------------------
+
+NEW FEATURES
+
+
+BUG FIXES
+
+    * The user interface has been debugged so as to avoid the hang of the 
+    server in the missing values imputation tool and differential analysis tool.
+    
+    CHANGES IN VERSION 1.3.18 
 -------------------------
 
 NEW FEATURES

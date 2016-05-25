@@ -2,7 +2,7 @@
 import(rhandsontable)
 import(data.table)
 import(DAPAR)
-import(MSnbase)
+importFrom(Biobase, fData, exprs, pData)
 
 importFrom(shinyjs, info)
 importFrom(DT, dataTableOutput,renderDataTable )
