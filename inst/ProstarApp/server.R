@@ -1412,6 +1412,7 @@ output$calibrationPlot <- renderImage({
     input$calibrationMethod
     input$numericValCalibration
     rv$resAnaDiff
+    rv$seuilLogFC
     list(src = paste(tempdir(),sessionID,gGraphicsFilenames$calibrationPlot, sep="/"),
          contentType = "image/png"
          #width = width,
@@ -1423,6 +1424,7 @@ output$calibrationPlot <- renderImage({
 
 output$errMsgCalibrationPlot <- renderUI({
     rv$errMsgCalibrationPlot
+    rv$seuilLogFC
     if (is.null(rv$errMsgCalibrationPlot) ) {return(NULL)}
     
     txt <- NULL
@@ -1438,6 +1440,7 @@ output$errMsgCalibrationPlot <- renderUI({
 
 output$errMsgCalibrationPlotAll <- renderUI({
     rv$errMsgCalibrationPlotAll
+    rv$seuilLogFC
     if (is.null(rv$errMsgCalibrationPlotAll) ) {return(NULL)}
     
     txt <- NULL
@@ -1453,6 +1456,7 @@ output$errMsgCalibrationPlotAll <- renderUI({
 output$calibrationPlotAll <- renderImage({
     rv$resAnaDiff
     input$calibrationMethod
+    rv$seuilLogFC
     list(src = paste(tempdir(),sessionID,gGraphicsFilenames$calibrationPlotAll, sep="/"),
          contentType = "image/png"
          #width = width,
@@ -4177,7 +4181,7 @@ output$Aggregation_Step2 <- renderUI({
     )
     )
     } else {
-        h4("The dataset is a protein one: the aggregation cannot be performed.")
+        h4("The peptide dataset has been aggregated into a protein dataset.")
     }
     
 })

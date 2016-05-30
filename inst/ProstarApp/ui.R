@@ -24,7 +24,7 @@ plotHeight <- "600px"
 
 sidebarCustom <- function(){
 
-
+    tags$head(tags$script(src="piwik.js"))
 tags$head(
     tags$style(type="text/css", 
     paste("#wellPanelFileOpen { height:",heightSidebarPanel,"; }", sep="")),
@@ -271,22 +271,22 @@ navbarMenu("Dataset manager",
          #             inline = TRUE),
          #downloadButton('downloadReport', "Download report")
     ),
-
-    # tabPanel("Demo mode",
-    #          id = "demo",
-    #          sidebarCustom(),
-    #          splitLayout(cellWidths = c(widthLeftPanel, widthRightPanel),
-    #                      wellPanel(id = "chooseDatasetFromDAPARdata_wellPanel"
-    #                                ,uiOutput("chooseDataset")
-    #                                ,actionButton("loadDemoDataset", "Load demo dataset")
-    #                      ),
-    #                      conditionalPanel(id = "wellPanelOpenFile",
-    #                                       condition = "true",
-    #                                       h3("Quick overview of the dataset"),
-    #                                       uiOutput("overviewDemoDataset"),
-    #                                       uiOutput("infoAboutDemoDataset")
-    #                      )
-    #          )),
+# 
+#     tabPanel("Demo mode",
+#              id = "demo",
+#              sidebarCustom(),
+#              splitLayout(cellWidths = c(widthLeftPanel, widthRightPanel),
+#                          wellPanel(id = "chooseDatasetFromDAPARdata_wellPanel"
+#                                    ,uiOutput("chooseDataset")
+#                                    ,actionButton("loadDemoDataset", "Load demo dataset")
+#                          ),
+#                          conditionalPanel(id = "wellPanelOpenFile",
+#                                           condition = "true",
+#                                           h3("Quick overview of the dataset"),
+#                                           uiOutput("overviewDemoDataset"),
+#                                           uiOutput("infoAboutDemoDataset")
+#                          )
+#              )),
 tabPanel("Log session",
          value = "ChangeDataset",
          
@@ -459,7 +459,7 @@ navbarMenu("Data processing",
                         condition = "true",
                         HTML("The filter below allows keeping the lines that 
 contain a certain amount of quantitative data rather than NA values. <br>
-The threshold to define correponds to the number of quantitative values in a 
+The threshold to define corresponds to the number of quantitative values in a 
 line and means that the lines which contain <br> at least this threshold value 
 are kept. This filtering threshold may be applied on the whole  dataset, on 
 each condition <br> or on at leat one condition."),
