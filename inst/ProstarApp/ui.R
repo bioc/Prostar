@@ -3,7 +3,7 @@ options(shiny.reactlog=TRUE)
 
 
 library(DAPAR)
-#library(DAPARdata)
+library(DAPARdata)
 library(shiny)
 library(rhandsontable)
 library(data.table)
@@ -113,7 +113,8 @@ shinyUI <- tagList(
 titlePanel("", windowTitle = "Prostar"),
 sidebarPanelWidth()
 ,useShinyjs()
-
+#,tags$head(includeScript("google-analytics.js"))
+#,tags$head(includeScript("piwik.js"))
 
 ,uiOutput("disableAggregationTool")
 ,navbarPage(
@@ -271,22 +272,24 @@ navbarMenu("Dataset manager",
          #             inline = TRUE),
          #downloadButton('downloadReport', "Download report")
     ),
-# 
-#     tabPanel("Demo mode",
-#              id = "demo",
-#              sidebarCustom(),
-#              splitLayout(cellWidths = c(widthLeftPanel, widthRightPanel),
-#                          wellPanel(id = "chooseDatasetFromDAPARdata_wellPanel"
-#                                    ,uiOutput("chooseDataset")
-#                                    ,actionButton("loadDemoDataset", "Load demo dataset")
-#                          ),
-#                          conditionalPanel(id = "wellPanelOpenFile",
-#                                           condition = "true",
-#                                           h3("Quick overview of the dataset"),
-#                                           uiOutput("overviewDemoDataset"),
-#                                           uiOutput("infoAboutDemoDataset")
-#                          )
-#              )),
+
+    tabPanel("Demo mode",
+             id = "demo",
+             sidebarCustom(),
+             splitLayout(cellWidths = c(widthLeftPanel, widthRightPanel),
+                         wellPanel(id = "chooseDatasetFromDAPARdata_wellPanel"
+                                   ,uiOutput("chooseDataset")
+                                   ,actionButton("loadDemoDataset", "Load demo dataset")
+                         ),
+                         conditionalPanel(id = "wellPanelOpenFile",
+                                          condition = "true",
+                                          h3("Quick overview of the dataset"),
+                                          uiOutput("overviewDemoDataset"),
+                                          tags$iframe(src="http://bioconductor.org/packages/release/data/experiment/vignettes/DAPARdata/inst/doc/UPSpep-prot25.pdf", 
+                                                      width="900", height="700")
+                                         # uiOutput("infoAboutDemoDataset")
+                         )
+             )),
 tabPanel("Log session",
          value = "ChangeDataset",
          
@@ -388,7 +391,7 @@ tabPanel("Descriptive statistics",
                             does not contains any NA lines. <br> Please check 
                             your data and use Filtering options or missing 
                             values imputation."),
-                        busyIndicator("Calculation In progress",wait = 0),
+                        busyIndicator("Calculation in progress",wait = 0),
                         uiOutput("DS_PlotHeatmap")
                     )
                 )
@@ -571,7 +574,7 @@ tabPanel("Miss. values imputation",
                     condition = "true",
                         helpText("Select an imputation method before 
                                 performing the imputation of missing values."),
-                    busyIndicator("Calculation In progress",wait = 0),
+                    busyIndicator("Calculation in progress",wait = 0),
                     #imageOutput("viewNAbyMean"),
                      fluidRow(
                          column(width = 5, imageOutput("viewNAbyMean"
@@ -642,10 +645,10 @@ tabPanel("Differential analysis",
                 conditionalPanel(id = "wellPanel_DifferentialAnalysisTab2",
                     condition = "true",
                     htmlOutput("errMsgCalibrationPlotAll"),
-                    busyIndicator("Calculation In progress",wait = 0),
+                    busyIndicator("Calculation in progress",wait = 0),
                     imageOutput("calibrationPlotAll"),
                     uiOutput("errMsgCalibrationPlot"),
-                    busyIndicator("Calculation In progress",wait = 0),
+                    busyIndicator("Calculation in progress",wait = 0),
                     imageOutput("calibrationPlot")
                 )
             )

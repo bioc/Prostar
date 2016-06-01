@@ -1013,9 +1013,9 @@ peptides to be accounted for during the aggregation process.
 
 Third, the aggregation method itself ust be chosen: 
 \begin{itemize}
-\item Sum: that is the sum of the peptide intensities),
-\item Mean: the mean of the peptide intensities),
-\item Topn: that is the sum over the N peptides with the highest median 
+\item Sum over all: that is the sum of the peptide intensities,
+\item Mean: the mean of the peptide intensities,
+\item Sum on top n: that is the sum over the N peptides with the highest median 
 intensities - in this case, the additional parameter N must be tuned.
 \end{itemize}
 
