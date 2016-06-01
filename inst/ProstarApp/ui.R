@@ -24,7 +24,6 @@ plotHeight <- "600px"
 
 sidebarCustom <- function(){
 
-    tags$head(tags$script(src="piwik.js"))
 tags$head(
     tags$style(type="text/css", 
     paste("#wellPanelFileOpen { height:",heightSidebarPanel,"; }", sep="")),
@@ -556,6 +555,7 @@ each condition <br> or on at leat one condition."),
 ),
 
 tabPanel("Miss. values imputation",
+         id = "tabPanelImputation",
     value = "imputation",
         sidebarCustom(),
             splitLayout(cellWidths = c(widthLeftPanel, widthRightPanel),

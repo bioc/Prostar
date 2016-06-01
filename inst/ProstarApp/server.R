@@ -812,7 +812,6 @@ observe({
         
         result = tryCatch(
             {
-                
                 png(paste(tempdir(), sessionID, gGraphicsFilenames$boxplot, sep="/")
                     ,width = 800, height = 600)
                 wrapper.boxPlotD(rv$current.obj,  legDS)
@@ -955,8 +954,6 @@ observe({
         }, finally = {
             #cleanup-code 
         })
-    
-    
 })
 
     
@@ -1289,9 +1286,11 @@ observe({
 
 observe({
     rv$current.obj
-    if (is.null(rv$current.obj)) {return(NULL)}
+    #input$toto
     
     isolate({
+        
+        if (is.null(rv$current.obj)) {return(NULL)}
         result = tryCatch(
             {
                 png(paste(tempdir(), sessionID, gGraphicsFilenames$imageNA, sep="/")
@@ -2712,8 +2711,7 @@ output$References <- renderText({
         <li> S. Wieczorek, F. Combes, C. Lazar, Q. Giai-Gianetto, L. Gatto, 
         A. Dorffer, A.-M. Hesse, Y. Coute, M. Ferro, C. Bruley, T. Burger. 
         \"DAPAR & ProStaR: software to perform statistical analyses in 
-        quantitative discovery proteomics\", under (minor) revision, 
-        <i>Bioinformatics</i>, 2016
+        quantitative discovery proteomics\", under review, 2016
         </li>
         <li> C. Lazar, L. Gatto, M. Ferro, C. Bruley, T. Burger. Accounting 
         for the multiple natures of missing values in label-free quantitative 
@@ -3792,8 +3790,7 @@ output$aboutText <- renderUI({
 S. Wieczorek, F. Combes, C. Lazar, Q. Giai-Gianetto, L. Gatto, 
         A. Dorffer, A.-M. Hesse, Y. Coute, M. Ferro, C. Bruley, T. Burger. 
                   <i>\"DAPAR & ProStaR: software to perform statistical analyses in <br>
-                  quantitative discovery proteomics\"</i>, under (minor) revision, 
-                  <i>Bioinformatics</i>, 2016
+                  quantitative discovery proteomics\"</i>, under review, 2016
                   
 <br><br><br>
 <strong>DAPAR</strong> and <strong>ProStaR</strong> form a 
