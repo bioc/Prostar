@@ -334,12 +334,12 @@ tabPanel("Descriptive statistics",
                      view the distribution of missing values."),
                     fluidRow(
                     column(width = 4, 
-                           imageOutput("histoMV_Image_DS")
+                           plotOutput("histoMV_Image_DS")
                            ),
                     column(width = 4, 
-                        imageOutput("histo.missvalues.per.lines_DS")),
+                        plotOutput("histo.missvalues.per.lines_DS")),
                     column(width = 4, 
-                        imageOutput("histo.missvalues.per.lines.per.conditions_DS"))
+                        plotOutput("histo.missvalues.per.lines.per.conditions_DS"))
                 )
             ),
 
@@ -370,7 +370,7 @@ tabPanel("Descriptive statistics",
                     ),
                     conditionalPanel(id = "wellPanelCorrMat",
                                      condition = "true",
-                                     imageOutput("corrMatrix",width = plotWidth,
+                                     plotOutput("corrMatrix",width = plotWidth,
                                                  height = plotHeight)
                     )
                 )
@@ -406,7 +406,7 @@ tabPanel("Descriptive statistics",
                     ),
                     conditionalPanel(id = "wellPanelBoxplot",
                         condition = "true",
-                        imageOutput("viewBoxPlot_DS",width = plotWidth,
+                        plotOutput("viewBoxPlot_DS",width = plotWidth,
                                     height = plotHeight)
                     )
                 )
@@ -423,7 +423,7 @@ tabPanel("Descriptive statistics",
                     ),
                     conditionalPanel(id = "wellPanelBoxplot",
                         condition = "true",
-                        imageOutput("viewDensityplot_DS",
+                        plotOutput("viewDensityplot_DS",
                             width = plotWidth,
                             height = plotHeight)
                     )
@@ -435,7 +435,7 @@ tabPanel("Descriptive statistics",
                 value="DS_tabDistVar",
                 p("This graphics shows, for each condition, the distribution 
                     of the variance of the log-intensities."),
-                imageOutput("viewDistVariance",
+                plotOutput("viewDistVariance",
                     width = plotWidth,
                     height = plotHeight)
             )
@@ -467,10 +467,10 @@ are kept. This filtering threshold may be applied on the whole  dataset, on
 each condition <br> or on at leat one condition."),
                         fluidRow(
                             column(width = 4, 
-                                   imageOutput("histoMV_Image")
+                                   plotOutput("histoMV_Image")
                                    ),
-                            column(width = 4,imageOutput("histo.missvalues.per.lines_Image")),
-                            column(width = 4,imageOutput("histo.missvalues.per.lines.per.conditions_Image"))
+                            column(width = 4,plotOutput("histo.missvalues.per.lines_Image")),
+                            column(width = 4,plotOutput("histo.missvalues.per.lines.per.conditions_Image"))
                         )
                     )
                 )
@@ -485,7 +485,7 @@ each condition <br> or on at leat one condition."),
                 ),
                 conditionalPanel(id = "wellPanelMVFilterTab2",
                     condition = "true",
-                    imageOutput("GlobalPieChart")
+                    plotOutput("GlobalPieChart")
                 )
             )
         )
@@ -531,9 +531,9 @@ each condition <br> or on at leat one condition."),
                 condition = "true",
                 uiOutput("helpForNormalizationMethods"),
                 fluidRow(
-                    column(width=6, imageOutput("viewBoxPlotNorm")),
-                    column(width=6, imageOutput("viewComparisonNorm"))),
-                    imageOutput("viewDensityplotNorm")
+                    column(width=6, plotOutput("viewBoxPlotNorm")),
+                    column(width=6, plotOutput("viewComparisonNorm"))),
+                    plotOutput("viewDensityplotNorm")
             )
         ),
     tags$head(
@@ -577,9 +577,9 @@ tabPanel("Miss. values imputation",
                     busyIndicator("Calculation in progress",wait = 0),
                     #imageOutput("viewNAbyMean"),
                      fluidRow(
-                         column(width = 5, imageOutput("viewNAbyMean"
-                                                       , height = plotHeight, width = plotWidth))
-                         ,column(width = 7, imageOutput("showImageNA"
+                         column(width = 5, plotOutput("viewNAbyMean"
+                                                       , height = plotHeight, width = "400px"))
+                         ,column(width = 7, plotOutput("showImageNA"
                                                         ))
                      )
                 )
@@ -629,7 +629,7 @@ tabPanel("Differential analysis",
                 conditionalPanel(id = "wellPanel_DifferentialAnalysisTab1",
                     condition = "true",
                     uiOutput("nbSelectedItems"),
-                    imageOutput("volcanoplot", height="500px", width="600px")
+                    plotOutput("volcanoplot", height="500px", width="600px")
                 )
             )
         ),
@@ -646,10 +646,10 @@ tabPanel("Differential analysis",
                     condition = "true",
                     htmlOutput("errMsgCalibrationPlotAll"),
                     busyIndicator("Calculation in progress",wait = 0),
-                    imageOutput("calibrationPlotAll"),
+                    plotOutput("calibrationPlotAll"),
                     uiOutput("errMsgCalibrationPlot"),
                     busyIndicator("Calculation in progress",wait = 0),
-                    imageOutput("calibrationPlot")
+                    plotOutput("calibrationPlot")
                 )
             )
         ),
@@ -672,7 +672,7 @@ tabPanel("Differential analysis",
                         column(width= 4, htmlOutput("equivPVal")),
                         column(width= 4, htmlOutput("showFDR"))
                     ),
-                    imageOutput("volcanoplotStep3", 
+                    plotOutput("volcanoplotStep3", 
                                 height="500px",
                                 width="600px")
                 )

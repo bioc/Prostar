@@ -608,9 +608,19 @@ GetNbNA <- reactive({
 
 ######################################
 loadObjectInMemoryFromConverter <- reactive({
-    
+
     rv$typeOfDataset <- rv$current.obj@experimentData@other$typeOfData
     if (is.null(rv$typeOfDataset)) {rv$typeOfDataset <- ""}
+
+    #Si on a deja des pVal, alors, ne pas recalculer 
+    if ("logFC" %in% names(Biobase::fData(rv$current.obj) )){
+        rv$resAnaDiff <- list(logFC = Biobase::fData(rv$current.obj)$logFC,
+                              P.Value = Biobase::fData(rv$current.obj)$P.Value)
+        rv$seuilLogFC <- rv$current.obj@experimentData@other$threshold.logFC
+        rv$seuilPVal  <- rv$current.obj@experimentData@other$threshold.p.value
+        
+    }
+
     
     name <- paste ("Original", " - ", rv$typeOfDataset, sep="")
     rv$dataset[[name]] <- rv$current.obj
@@ -661,824 +671,6 @@ ClearMemory <- function(){
     #updateSelectInput(session,"typeImputationMNAR",selected= "QRILC" )
     
 }
-
-
-#######################################################################
-########## FOR THE DESCRIPTIVE STATISTICS #############################
-#######################################################################
-observe({
-    rv$current.obj
-    if (is.null(rv$current.obj)) {return(NULL)}
-    
-    if (!is.null(rv$current.obj)){
-        result = tryCatch(
-            {
-                png(paste(tempdir(), sessionID, gGraphicsFilenames$histoMV_DS, sep="/")
-                    ,width = 400, height = 400)
-                wrapper.mvHisto(rv$current.obj)
-                dev.off()
-                }
-            , warning = function(w) {
-                shinyjs::info(w)
-            }, error = function(e) {
-                shinyjs::info(e)
-            }, finally = {
-                #cleanup-code 
-                })
-                
-                
-    }
-})
-
-    
-observe({
-        rv$current.obj
-        if (is.null(rv$current.obj)) {return(NULL)}
-
-    result = tryCatch(
-        {
-            png(paste(tempdir(), sessionID, gGraphicsFilenames$histoMVPerLines_DS, sep="/")
-                ,width = 400, height = 400)
-            wrapper.mvPerLinesHisto(rv$current.obj, 
-                                    c(2:length(colnames(Biobase::pData(rv$current.obj)))))
-            dev.off()
-        }
-        , warning = function(w) {
-            shinyjs::info(w)
-        }, error = function(e) {
-            shinyjs::info(e)
-        }, finally = {
-            #cleanup-code 
-        })
-    
-   
-})
-
-
-observe({
-    rv$current.obj
-    if (is.null(rv$current.obj)) {return(NULL)}
-    
-    result = tryCatch(
-        {
-            png(paste(tempdir(), sessionID, gGraphicsFilenames$histoMVPerLinesConditions_DS, sep="/")
-                ,width = 500, height = 400)
-            wrapper.mvPerLinesHistoPerCondition(rv$current.obj, 
-                                                c(2:length(colnames(Biobase::pData(rv$current.obj)))))
-            dev.off()
-        }
-        , warning = function(w) {
-            shinyjs::info(w)
-        }, error = function(e) {
-            shinyjs::info(e)
-        }, finally = {
-            #cleanup-code 
-        })
-    
-    })
-
-observe({
-    rv$current.obj
-    input$linkage
-    input$distance
-    if (is.null(rv$current.obj)) {return(NULL)}
-
-    
-    if (!is.null(input$linkage) && !is.null(input$distance)
-        && (getNumberOfEmptyLines(Biobase::exprs(rv$current.obj)) == 0)) {
-        
-        result = tryCatch(
-            {
-                png(paste(tempdir(), sessionID, gGraphicsFilenames$heatmap, sep="/")
-                    ,width = 800, height = 400)
-                wrapper.heatmapD(rv$current.obj,
-                                 input$distance, 
-                                 input$linkage,
-                                 TRUE) 
-                dev.off() 
-            }
-            , warning = function(w) {
-                shinyjs::info(w)
-            }, error = function(e) {
-                shinyjs::info(e)
-            }, finally = {
-                #cleanup-code 
-            })
-        
-        
-    }
-    })
-    
-observe({
-    rv$current.obj
-    input$expGradientRate
-    if (is.null(rv$current.obj)) {return(NULL)}
-
-        gradient <- NULL
-    if (is.null(input$expGradientRate)){gradient <- defaultGradientRate}
-    else{gradient <- input$expGradientRate}
-        
-        result = tryCatch(
-            {
-                
-                png(paste(tempdir(), sessionID, gGraphicsFilenames$corrMatrix, sep="/")
-                    ,width = 500, height = 500)
-                wrapper.corrMatrixD(rv$current.obj, rate = gradient)
-                dev.off()
-            }
-            , warning = function(w) {
-                shinyjs::info(w)
-            }, error = function(e) {
-                shinyjs::info(e)
-            }, finally = {
-                #cleanup-code 
-            })
-        
-    
-}) 
-    
-    
-observe({
-    rv$current.obj
-    input$legendXAxis_DS
-    if (is.null(rv$current.obj)) {return(NULL)}
-
-    
-        legDS <- NULL
-    if (is.null(input$legendXAxis_DS)){
-        .names <- colnames(Biobase::pData(rv$current.obj))[-1]
-        legDS <- .names[1]}
-    else{legDS <- input$legendXAxis_DS}
-        
-        result = tryCatch(
-            {
-                png(paste(tempdir(), sessionID, gGraphicsFilenames$boxplot, sep="/")
-                    ,width = 800, height = 600)
-                wrapper.boxPlotD(rv$current.obj,  legDS)
-                dev.off()
-            }
-            , warning = function(w) {
-                shinyjs::info(w)
-            }, error = function(e) {
-                shinyjs::info(e)
-            }, finally = {
-                #cleanup-code 
-            })
-
-   
-})
-    
-    
-
-observe({
-    rv$current.obj
-    input$lab2Show_DS
-    input$whichGroup2Color_DS
-    if (is.null(rv$current.obj)) {return(NULL)}
-    
-    labels_DS <- NULL
-    labelsToShow_DS <- NULL
-    gToColor_DS <- NULL
-    if (is.null(input$lab2Show_DS)) { 
-        labelsToShow_DS <- c(1:nrow(Biobase::pData(rv$current.obj)))
-        }
-    else { labelsToShow_DS <- input$lab2Show_DS}
-    
-    if (is.null(input$whichGroup2Color_DS)){
-        gToColor_DS <- "Condition"
-    }else{gToColor_DS <- input$whichGroup2Color_DS}
-    
-    if (is.null(input$whichGroup2Color_DS) || (input$whichGroup2Color_DS == "Condition")){
-        labels_DS <- Biobase::pData(rv$current.obj)[,"Label"]
-    }else {
-        labels_DS <- paste(Biobase::pData(rv$current.obj)[,"Label"],
-                      Biobase::pData(rv$current.obj)[,"Bio.Rep"],
-                      Biobase::pData(rv$current.obj)[,"Tech.Rep"],
-                      Biobase::pData(rv$current.obj)[,"Analyt.Rep"],
-                      sep= "_")
-    }
-   
-    result = tryCatch(
-        {
-            
-            png(paste(tempdir(), sessionID, gGraphicsFilenames$densityPlot, sep="/")
-                ,width = 800, height = 600)
-            wrapper.densityPlotD(rv$current.obj, labels_DS, as.numeric(labelsToShow_DS), 
-                                 gToColor_DS)
-            dev.off()
-        }
-        , warning = function(w) {
-            shinyjs::info(w)
-        }, error = function(e) {
-            shinyjs::info(e)
-        }, finally = {
-            #cleanup-code 
-        })
-    
-    
-    
-    })
-
-#_-----------------------------------------
-    
-   
-    #------------------------------------------------
-
-observe({
-    rv$current.obj
-
-    if (is.null(rv$current.obj)) {return(NULL)}
-    result = tryCatch(
-        {
-            
-            png(paste(tempdir(), sessionID, gGraphicsFilenames$varDist, sep="/")
-                ,width = 800, height = 600)
-            wrapper.varianceDistD(rv$current.obj)
-            dev.off()
-        }
-        , warning = function(w) {
-            shinyjs::info(w)
-        }, error = function(e) {
-            shinyjs::info(e)
-        }, finally = {
-            #cleanup-code 
-        })
-    
-    
-    
-    
-})
-
-
-
-#######################################################################
-##########       FOR THE FILTERING TOOL   #############################
-#######################################################################
-observe({
-    rv$current.obj
-    if (is.null(rv$current.obj)) {return(NULL)}
-    result = tryCatch(
-        {
-            png(paste(tempdir(), sessionID, gGraphicsFilenames$histoMV, sep="/")
-                ,width = 300, height = 400)
-            if (!is.null(rv$current.obj)){wrapper.mvHisto(rv$current.obj)}
-            dev.off()
-        }
-        , warning = function(w) {
-            shinyjs::info(w)
-        }, error = function(e) {
-            shinyjs::info(e)
-        }, finally = {
-            #cleanup-code 
-        })
-    
-    
-    
-})
-    
-observe({
-    rv$current.obj
-    if (is.null(rv$current.obj)) {return(NULL)}
-    result = tryCatch(
-        {
-            png(paste(tempdir(), sessionID, gGraphicsFilenames$histoMVPerLines, sep="/")
-                ,width = 300, height = 400)
-            wrapper.mvPerLinesHisto(rv$current.obj, 
-                                    c(2:length(colnames(Biobase::pData(rv$current.obj)))))
-            dev.off()
-        }
-        , warning = function(w) {
-            shinyjs::info(w)
-        }, error = function(e) {
-            shinyjs::info(e)
-        }, finally = {
-            #cleanup-code 
-        })
-})
-
-    
-observe({
-    rv$current.obj
-    if (is.null(rv$current.obj)) {return(NULL)}
-    result = tryCatch(
-        {
-            png(paste(tempdir(), sessionID, gGraphicsFilenames$histoMVPerLinesConditions, sep="/")
-                ,width = 300, height = 400)
-            wrapper.mvPerLinesHistoPerCondition(rv$current.obj, 
-                                                c(2:length(colnames(Biobase::pData(rv$current.obj)))))
-            dev.off()
-        }
-        , warning = function(w) {
-            shinyjs::info(w)
-        }, error = function(e) {
-            shinyjs::info(e)
-        }, finally = {
-            #cleanup-code 
-        })
-    
-})    
-
-    
-observe({
-    rv$current.obj
-    input$idBoxContaminants
-    input$idBoxReverse
-    input$prefixReverse
-    input$prefixContaminants
-    if (is.null(rv$current.obj)) {return(NULL)}
-    
-    p <- rep("",4)
-    if (is.null(input$idBoxContaminants)) {p[1] <- ""}
-    else {p[1] <-input$idBoxContaminants}
-    if (is.null(input$idBoxReverse)) {p[2] <- ""}
-    else {p[2] <-input$idBoxReverse}
-    if (is.null(input$prefixContaminants)) {p[3] <- ""}
-    else {p[3] <-input$prefixContaminants}
-    if (is.null(input$prefixReverse)) {p[4] <- ""}
-    else {p[4] <-input$prefixReverse}
-    result = tryCatch(
-        {
-            png(paste(tempdir(), sessionID, gGraphicsFilenames$propContRev, sep="/")
-                ,width = 800, height = 400)
-            proportionConRev(rv$current.obj,p[1], p[3], p[2],p[4])
-            dev.off()
-        }
-        , warning = function(w) {
-            shinyjs::info(w)
-        }, error = function(e) {
-            shinyjs::info(e)
-        }, finally = {
-            #cleanup-code 
-        })
-    
-   
-})
-
-
-
-
-
-
-#######################################################################
-##########     FOR THE NORMALIZATION      #############################
-#######################################################################
-observe({
-    rv$dataset[[input$datasets]]
-    rv$current.obj
-    input$legendXAxis
-    input$whichGroup2Color
-    input$lab2Show
-    input$normalization.method
-    input$perform.normalization
-
-    if (is.null(rv$current.obj) || is.null(rv$dataset[[input$datasets]]) ||
-        is.null(input$normalization.method)) {return(NULL)}
-    
-
-    leg <- NULL
-    grp <- NULL
-    
-    labelsNorm <- NULL
-    labelsToShowNorm <- NULL
-    gToColorNorm <- NULL
-    if (is.null(input$lab2Show)) { 
-        labelsToShowNorm <- c(1:nrow(Biobase::pData(rv$current.obj)))
-    }
-    else { labelsToShowNorm <- input$lab2Show}
-    
-    if (is.null(input$whichGroup2Color)){
-        gToColorNorm <- "Condition"
-    }else{gToColorNorm <- input$whichGroup2Color}
-    
-    
-    # if (is.null(input$legendXAxis)){
-    #     .names <- colnames(Biobase::pData(rv$current.obj))[-1]
-    #     leg <- .names[1]}
-    # else{leg <- input$legendXAxis}
-    # 
-    # 
-    #_-----------------------------------------
-
-    if (is.null(input$whichGroup2Color) 
-        || (input$whichGroup2Color == "Condition")){
-        labelsNorm <- Biobase::pData(rv$current.obj)[,"Label"]
-    }else {
-        labelsNorm <- paste(Biobase::pData(rv$current.obj)[,"Label"],
-                            Biobase::pData(rv$current.obj)[,"Bio.Rep"],
-                            Biobase::pData(rv$current.obj)[,"Tech.Rep"],
-                            Biobase::pData(rv$current.obj)[,"Analyt.Rep"],
-                            sep= "_")
-    }
-
-    result = tryCatch(
-        {
-            png(paste(tempdir(), sessionID, gGraphicsFilenames$densityPlotNorm, sep="/"))
-            wrapper.densityPlotD(rv$current.obj, labelsNorm, as.numeric(labelsToShowNorm), 
-                                 gToColorNorm)
-            dev.off()
-        }
-        , warning = function(w) {
-            shinyjs::info(w)
-        }, error = function(e) {
-            shinyjs::info(e)
-        }, finally = {
-            #cleanup-code 
-        })
-    
-   
-    
-})   
-    
-observe({
-    rv$dataset[[input$datasets]]
-    rv$current.obj
-    input$legendXAxis
-    input$whichGroup2Color
-    input$lab2Show
-    input$normalization.method
-    input$perform.normalization
-    
-    if (is.null(rv$current.obj) 
-        || is.null(rv$dataset[[input$datasets]]) 
-        || is.null(input$normalization.method)
-        || 
-        (rv$typeOfDataset != rv$current.obj@experimentData@other$typeOfData)) {return(NULL)}
-    
-    
-    leg <- NULL
-    grp <- NULL
-    
-    labelsNorm <- NULL
-    labelsToShowNorm <- NULL
-    gToColorNorm <- NULL
-    if (is.null(input$lab2Show)) { 
-        labelsToShowNorm <- c(1:nrow(Biobase::pData(rv$current.obj)))
-    }
-    else { labelsToShowNorm <- input$lab2Show}
-    
-    if (is.null(input$whichGroup2Color)){
-        gToColorNorm <- "Condition"
-    }else{gToColorNorm <- input$whichGroup2Color}
-    
-    
-    # if (is.null(input$legendXAxis)){
-    #     .names <- colnames(Biobase::pData(rv$current.obj))[-1]
-    #     leg <- .names[1]}
-    # else{leg <- input$legendXAxis}
-    # 
-    # 
-    #_-----------------------------------------
-    
-    if (is.null(input$whichGroup2Color) 
-        || (input$whichGroup2Color == "Condition")){
-        labelsNorm <- Biobase::pData(rv$current.obj)[,"Label"]
-    }else {
-        labelsNorm <- paste(Biobase::pData(rv$current.obj)[,"Label"],
-                            Biobase::pData(rv$current.obj)[,"Bio.Rep"],
-                            Biobase::pData(rv$current.obj)[,"Tech.Rep"],
-                            Biobase::pData(rv$current.obj)[,"Analyt.Rep"],
-                            sep= "_")
-    }
-
-    result = tryCatch(
-        {
-            png(paste(tempdir(), sessionID, gGraphicsFilenames$compareNorm, sep="/"))
-            compareNormalizationD(Biobase::exprs(rv$dataset[[input$datasets]]),
-                                  Biobase::exprs(rv$current.obj),
-                                  labelsNorm,
-                                  as.numeric(labelsToShowNorm),
-                                  gToColorNorm)
-            dev.off()
-        }
-        #, warning = function(w) {
-         #   shinyjs::info(w)
-        #}
-        , error = function(e) {
-            shinyjs::info(e)
-        }, finally = {
-            #cleanup-code 
-        })
-   
-})
-
-
-observe({
-    rv$current.obj
-    input$whichGroup2Color
-    input$normalization.method
-    input$perform.normalization
-    
-    if (is.null(rv$current.obj) || is.null(rv$dataset[[input$datasets]]) ||
-        is.null(input$normalization.method)) {return(NULL)}
-
-
-    gToColorNorm <- NULL
-
-    if (is.null(input$whichGroup2Color)){
-        gToColorNorm <- "Condition"
-    }else{gToColorNorm <- input$whichGroup2Color}
-    
-    leg <- NULL
-    if (is.null(input$legendXAxis_DS)){
-        .names <- colnames(Biobase::pData(rv$current.obj))[-1]
-        leg <- .names[1]}
-    else{leg <- input$legendXAxis_DS}
-    
-    result = tryCatch(
-        {
-            png(paste(tempdir(), sessionID, gGraphicsFilenames$boxplotNorm, sep="/"))
-            wrapper.boxPlotD(rv$current.obj,leg ,gToColorNorm)
-            dev.off()
-        }
-        , warning = function(w) {
-            shinyjs::info(w)
-        }, error = function(e) {
-            shinyjs::info(e)
-        }, finally = {
-            #cleanup-code 
-        })
-    
- 
-
-})
-
-
-
-#######################################################################
-################      FOR THE AGGREGATION       #######################
-#######################################################################
-observe({
-     rv$matAdj
-    
-    if (is.null(rv$matAdj)) {return(NULL)}
-    result = tryCatch(
-        {
-            png(paste(tempdir(), sessionID, gGraphicsFilenames$AgregMatUniquePeptides, sep="/"))
-            GraphPepProt(rv$matAdj$matWithUniquePeptides)
-            dev.off()
-        }
-        , warning = function(w) {
-            shinyjs::info(w)
-        }, error = function(e) {
-            shinyjs::info(e)
-        }, finally = {
-            #cleanup-code 
-        })
-    
-
-})
-
-
-observe({
-    rv$matAdj
-    
-    if (is.null(rv$matAdj)) {return(NULL)}
-    result = tryCatch(
-        {
-            png(paste(tempdir(), sessionID, gGraphicsFilenames$AgregMatSharedPeptides, sep="/"))
-            GraphPepProt(rv$matAdj$matWithSharedPeptides)
-            dev.off()
-        }
-        , warning = function(w) {
-            shinyjs::info(w)
-        }, error = function(e) {
-            shinyjs::info(e)
-        }, finally = {
-            #cleanup-code 
-        })
-
-
-})
-
-
-
-
-#######################################################################
-##########      FOR THE IMPUTATION        #############################
-#######################################################################
-observe({
-    rv$current.obj
-    
-    if (is.null(rv$current.obj)) {return(NULL)}
-    
-    isolate({
-        result = tryCatch(
-            {
-                png(paste(tempdir(), sessionID, gGraphicsFilenames$MVtypePlot, sep="/"),
-                    width = 400, height = 500)
-                wrapper.mvTypePlot(rv$current.obj)
-                dev.off()
-            }
-            , warning = function(w) {
-                shinyjs::info(w)
-            }, error = function(e) {
-                shinyjs::info(e)
-            }, finally = {
-                #cleanup-code 
-            })
-        
-
-    })
-    
-    
-})
-
-
-observe({
-    rv$current.obj
-    #input$toto
-    
-    isolate({
-        
-        if (is.null(rv$current.obj)) {return(NULL)}
-        result = tryCatch(
-            {
-                png(paste(tempdir(), sessionID, gGraphicsFilenames$imageNA, sep="/")
-                    ,width = 600, height = 500)
-                wrapper.mvImage(rv$current.obj)
-                dev.off()
-            }
-            , warning = function(w) {
-                shinyjs::info(w)
-            }, error = function(e) {
-                shinyjs::info(e)
-            }, finally = {
-                #cleanup-code 
-            })
-
-    })
-    
-    
-})
-
-
-
-#######################################################################
-##########  FOR THE DIFFERENTIAL ANALYSIS   ############################
-#######################################################################
-observe({
-    rv$seuilPVal
-    rv$seuilLogFC
-    input$condition1
-    input$condition2
-    input$diffAnaMethod
-    rv$resAnaDiff
-    
-     if (is.null(input$condition1) || is.null(input$condition2) ||
-        is.null(rv$seuilLogFC) || is.na(rv$seuilLogFC) ||
-        (input$condition1 == input$condition2) ||
-        (length(rv$resAnaDiff$logFC) == 0)) { return(NULL)}
-   
-    cond <- c(input$condition1, input$condition2)
-    result = tryCatch(
-        {
-            png(paste(tempdir(), sessionID, gGraphicsFilenames$volcanoPlot_1, sep="/")
-                ,width = 800, height = 500)
-            diffAnaVolcanoplot(logFC = rv$resAnaDiff$logFC, 
-                               pVal = rv$resAnaDiff$P.Value, 
-                               threshold_logFC = rv$seuilLogFC,
-                               conditions = cond)
-            dev.off()
-        }
-        , warning = function(w) {
-            shinyjs::info(w)
-        }, error = function(e) {
-            shinyjs::info(e)
-        }, finally = {
-            #cleanup-code 
-        })
-    
-
-})   
-   
-        
-observe({
-    rv$seuilPVal
-    rv$seuilLogFC
-    input$condition1
-    input$condition2
-    input$diffAnaMethod
-    rv$resAnaDiff
-    
-    if (is.null(input$condition1) || is.null(input$condition2) ||
-        is.null(rv$seuilLogFC) || is.na(rv$seuilLogFC) ||
-        is.null(rv$seuilPVal) || is.na(rv$seuilPVal) ||
-        (input$condition1 == input$condition2) ||
-        (length(rv$resAnaDiff$logFC) == 0)) { return(NULL)}
-    
-    cond <- c(input$condition1, input$condition2)
-    result = tryCatch(
-        {
-            png(paste(tempdir(), sessionID, gGraphicsFilenames$volcanoPlot_3, sep="/")
-                ,width = 800, height = 500)
-            if ("logFC" %in% names(fData(rv$current.obj) )){
-                diffAnaVolcanoplot(fData(rv$current.obj)$logFC,
-                                   fData(rv$current.obj)$P.Value, 
-                                   rv$current.obj@experimentData@other$threshold.p.value,
-                                   rv$current.obj@experimentData@other$threshold.logFC,
-                                   c(rv$current.obj@experimentData@other$condition1,
-                                     rv$current.obj@experimentData@other$condition2)
-                )
-            }else{
-                cond <- c(input$condition1, input$condition2)
-                
-                diffAnaVolcanoplot(rv$resAnaDiff$logFC, 
-                                   rv$resAnaDiff$P.Value, 
-                                   rv$seuilPVal, 
-                                   rv$seuilLogFC,
-                                   cond)
-            }
-            dev.off()
-        }
-        , warning = function(w) {
-            shinyjs::info(w)
-        }, error = function(e) {
-            shinyjs::info(e)
-        }, finally = {
-            #cleanup-code 
-        })
-    
-   
-    
-})
-
-observe({
-    rv$seuilPVal
-    rv$seuilLogFC
-    input$condition1
-    input$condition2
-    input$diffAnaMethod
-    rv$resAnaDiff
-    
-    if (is.null(input$condition1) || is.null(input$condition2) ||
-        is.null(rv$seuilLogFC) || is.na(rv$seuilLogFC) ||
-        (input$condition1 == input$condition2) ||
-        (length(rv$resAnaDiff$logFC) == 0)) { return(NULL)}
-    
-    cond <- c(input$condition1, input$condition2)
-   # ________
-
-    if (is.null(input$calibrationMethod)  ) {return(NULL)}
-    #if (input$condition1 == input$condition2) {return(NULL)}
-    
-    
-    t <- NULL
-    method <- NULL
-    t <- rv$resAnaDiff$P.Value
-    t <- t[which(abs(rv$resAnaDiff$logFC) >= rv$seuilLogFC)]
-   
-    l <- NULL
-    result = tryCatch(
-        {
-            png(paste(tempdir(), sessionID, gGraphicsFilenames$calibrationPlotAll, sep="/"),
-                width = 800, height = 400)
-            l <-catchToList(wrapperCalibrationPlot(t, "ALL")  )
-            rv$errMsgCalibrationPlotAll <- l$warnings[grep( "Warning:", l$warnings)]
-            dev.off()
-        }
-        , warning = function(w) {
-            shinyjs::info(w)
-        }, error = function(e) {
-            shinyjs::info(e)
-        }, finally = {
-            #cleanup-code 
-        })
-    
-    
-    ll <- NULL
-    result = tryCatch(
-        {
-            
-            png(paste(tempdir(), sessionID, gGraphicsFilenames$calibrationPlot, sep="/"),
-                width = 800, height = 400)
-            if ((input$calibrationMethod == "numeric value") 
-                && !is.null(input$numericValCalibration)) {
-                
-                ll <-catchToList(
-                    wrapperCalibrationPlot(t, input$numericValCalibration))
-                rv$errMsgCalibrationPlot <- ll$warnings[grep( "Warning:", ll$warnings)]
-            }
-            else if (input$calibrationMethod == "Benjamini-Hochberg") {
-                
-                ll <-catchToList(wrapperCalibrationPlot(t, 1))
-                rv$errMsgCalibrationPlot <- ll$warnings[grep( "Warning:", ll$warnings)]
-            }else { 
-                ll <-catchToList(wrapperCalibrationPlot(t, input$calibrationMethod))
-                rv$errMsgCalibrationPlot <- ll$warnings[grep( "Warning:", ll$warnings)]
-            }
-            dev.off()
-        }
-        , warning = function(w) {
-            shinyjs::info(w)
-        }, error = function(e) {
-            shinyjs::info(e)
-        }, finally = {
-            #cleanup-code 
-        })
-    
-
-})
-
 
 
 
@@ -1556,15 +748,7 @@ observe({
         rv$current.obj <- readRDS(input$file$datapath)
         rv$current.obj.name <- DeleteFileExtension(input$file$name)
         rv$typeOfDataset <- rv$current.obj@experimentData@other$typeOfData
-        
-        #Si on a deja des pVal, alors, ne pas recalculer 
-        if ("logFC" %in% names(Biobase::fData(rv$current.obj) )){
-            rv$resAnaDiff <- list(logFC = Biobase::fData(rv$current.obj)$logFC,
-                                  P.Value = Biobase::fData(rv$current.obj)$P.Value)
-            rv$seuilLogFC <- rv$currentObjexperimentData@other$threshold.logFC
-            rv$seuilPVal<- rv$currentObj@experimentData@other$threshold.p.value
-            
-        }
+
         
         writeToCommandLogFile(
             paste("current.obj <- readRDS('",
@@ -1616,10 +800,7 @@ observe({
             }, finally = {
                 #cleanup-code 
             })
-        
-        
-        
-    
+
     } )
 })
 
@@ -1740,7 +921,7 @@ observe({
         result = tryCatch(
             {
                 
-                rv$typeOfDataset <-rv$current.obj@experimentData@other$typeOfData
+                #rv$typeOfDataset <-rv$current.obj@experimentData@other$typeOfData
                 name <- paste ("Imputed", " - ", rv$typeOfDataset, sep="")
                 
                 rv$dataset[[name]] <- rv$current.obj
@@ -1825,6 +1006,7 @@ output$showFDR <- renderText({
 
 session$onSessionEnded(function() {
     setwd(tempdir())
+    graphics.off()
     unlink(sessionID, recursive = TRUE)
 })
 
@@ -1909,18 +1091,67 @@ catchToList <- function(expr) {
 } 
 
 
-output$calibrationPlot <- renderImage({
-    input$calibrationMethod
-    input$numericValCalibration
-    rv$resAnaDiff
-    rv$seuilLogFC
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$calibrationPlot, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
+output$calibrationPlot <- renderPlot({
 
+        rv$seuilPVal
+        rv$seuilLogFC
+        input$condition1
+        input$condition2
+        input$diffAnaMethod
+        rv$resAnaDiff
+        
+        if (is.null(input$condition1) || is.null(input$condition2) ||
+            is.null(rv$seuilLogFC) || is.na(rv$seuilLogFC) ||
+            (input$condition1 == input$condition2) ||
+            (length(rv$resAnaDiff$logFC) == 0)) { return(NULL)}
+        
+        cond <- c(input$condition1, input$condition2)
+        # ________
+        
+        if (is.null(input$calibrationMethod)  ) {return(NULL)}
+        #if (input$condition1 == input$condition2) {return(NULL)}
+        
+        
+        t <- NULL
+        method <- NULL
+        t <- rv$resAnaDiff$P.Value
+        t <- t[which(abs(rv$resAnaDiff$logFC) >= rv$seuilLogFC)]
+        
+        l <- NULL
+        
+        
+        ll <- NULL
+        result = tryCatch(
+            {
+
+                if ((input$calibrationMethod == "numeric value") 
+                    && !is.null(input$numericValCalibration)) {
+                    
+                    ll <-catchToList(
+                        wrapperCalibrationPlot(t, input$numericValCalibration))
+                    rv$errMsgCalibrationPlot <- ll$warnings[grep( "Warning:", ll$warnings)]
+                }
+                else if (input$calibrationMethod == "Benjamini-Hochberg") {
+                    
+                    ll <-catchToList(wrapperCalibrationPlot(t, 1))
+                    rv$errMsgCalibrationPlot <- ll$warnings[grep( "Warning:", ll$warnings)]
+                }else { 
+                    ll <-catchToList(wrapperCalibrationPlot(t, input$calibrationMethod))
+                    rv$errMsgCalibrationPlot <- ll$warnings[grep( "Warning:", ll$warnings)]
+                }
+
+            }
+            , warning = function(w) {
+                shinyjs::info(w)
+            }, error = function(e) {
+                shinyjs::info(e)
+            }, finally = {
+                #cleanup-code 
+            })
+        
+        
+    })
+    
 
 
 output$errMsgCalibrationPlot <- renderUI({
@@ -1954,16 +1185,45 @@ output$errMsgCalibrationPlotAll <- renderUI({
 
 
 #--------------------------------------------------
-output$calibrationPlotAll <- renderImage({
-    rv$resAnaDiff
-    input$calibrationMethod
+output$calibrationPlotAll <- renderPlot({
+    rv$seuilPVal
     rv$seuilLogFC
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$calibrationPlotAll, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
+    input$condition1
+    input$condition2
+    input$diffAnaMethod
+    rv$resAnaDiff
+    
+    if (is.null(input$condition1) || is.null(input$condition2) ||
+        is.null(rv$seuilLogFC) || is.na(rv$seuilLogFC) ||
+        (input$condition1 == input$condition2) ||
+        (length(rv$resAnaDiff$logFC) == 0)) { return(NULL)}
+    
+    cond <- c(input$condition1, input$condition2)
+    # ________
+    
+    if (is.null(input$calibrationMethod)  ) {return(NULL)}
+    #if (input$condition1 == input$condition2) {return(NULL)}
+    
+    
+    t <- NULL
+    method <- NULL
+    t <- rv$resAnaDiff$P.Value
+    t <- t[which(abs(rv$resAnaDiff$logFC) >= rv$seuilLogFC)]
+    
+    l <- NULL
+    result = tryCatch(
+        {
+            l <-catchToList(wrapperCalibrationPlot(t, "ALL")  )
+            rv$errMsgCalibrationPlotAll <- l$warnings[grep( "Warning:", l$warnings)]
+        }
+        , warning = function(w) {
+            shinyjs::info(w)
+        }, error = function(e) {
+            shinyjs::info(e)
+        }, finally = {
+            #cleanup-code 
+        })
+})
 
 
 
@@ -1972,11 +1232,13 @@ output$calibrationPlotAll <- renderImage({
 observe({ 
     input$datasets
     
-    isolate({
-        result = tryCatch(
-            {
-                if (!is.null(input$datasets)) {
+    
+#        result = tryCatch(
+#            {
+                isolate({
+                    if (!is.null(input$datasets)) {
                     rv$current.obj <- rv$dataset[[input$datasets]]
+                    
                     if (!is.null( rv$current.obj))
                         rv$typeOfDataset <- rv$current.obj@experimentData@other$typeOfData
                     UpdateLog(
@@ -1984,20 +1246,18 @@ observe({
                               input$datasets, 
                               sep=" "),
                         input$datasets)
-                }
-            }
-            , warning = function(w) {
-                shinyjs::info(w)
-            }, error = function(e) {
-                shinyjs::info(e)
-            }, finally = {
-                #cleanup-code 
-            })
-        
-        
-        
-   
-    })
+                    }
+                   # print(length(which(is.na(exprs(rv$current.obj))==TRUE)))
+                })
+            # }
+            # , warning = function(w) {
+            #     shinyjs::info(w)
+            # }, error = function(e) {
+            #     shinyjs::info(e)
+            # }, finally = {
+            #     #cleanup-code 
+            # })
+
     
 })
 
@@ -2011,8 +1271,8 @@ output$viewExprs <- DT::renderDataTable({
     if (input$nDigits == T){nDigits = 1e100}else {nDigits = 3}
     
     
-    result = tryCatch(
-        {
+    #result = tryCatch(
+     #   {
             
             data <- cbind(ID = rownames(Biobase::fData(rv$current.obj)),
                           round(Biobase::exprs(rv$current.obj), 
@@ -2029,15 +1289,15 @@ output$viewExprs <- DT::renderDataTable({
             # backgroundColor = styleInterval( 0, c('orange','white'))
             #                            )
             return(dat)
-        }
-        , warning = function(w) {
-            shinyjs::info(w)
-        }, error = function(e) {
-            shinyjs::info(e)
-        }, finally = {
-            #cleanup-code 
-        })
-    
+        # }
+        # , warning = function(w) {
+        #     shinyjs::info(w)
+        # }, error = function(e) {
+        #     shinyjs::info(e)
+        # }, finally = {
+        #     #cleanup-code 
+        # })
+        # 
     
    
 } )
@@ -2956,18 +2216,40 @@ output$overviewNewData <- renderUI({
 
 
 
-output$GlobalPieChart <- renderImage({
-    rv$current.obj
-    input$idBoxContaminants
-    input$idBoxReverse
-    input$prefixContaminants
-    input$prefixReverse
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$propContRev, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
+output$GlobalPieChart <- renderPlot({
+
+        rv$current.obj
+        input$idBoxContaminants
+        input$idBoxReverse
+        input$prefixReverse
+        input$prefixContaminants
+        if (is.null(rv$current.obj)) {return(NULL)}
+        
+        p <- rep("",4)
+        if (is.null(input$idBoxContaminants)) {p[1] <- ""}
+        else {p[1] <-input$idBoxContaminants}
+        if (is.null(input$idBoxReverse)) {p[2] <- ""}
+        else {p[2] <-input$idBoxReverse}
+        if (is.null(input$prefixContaminants)) {p[3] <- ""}
+        else {p[3] <-input$prefixContaminants}
+        if (is.null(input$prefixReverse)) {p[4] <- ""}
+        else {p[4] <-input$prefixReverse}
+        result = tryCatch(
+            {
+                proportionConRev(rv$current.obj,p[1], p[3], p[2],p[4])
+            }
+            , warning = function(w) {
+                shinyjs::info(w)
+            }, error = function(e) {
+                shinyjs::info(e)
+            }, finally = {
+                #cleanup-code 
+            })
+        
+        
+    })
+    
+    
 
 
 ######-----------------------------------------------------------------
@@ -2999,65 +2281,97 @@ output$downloadReport <- downloadHandler(
 
 
 
-output$histoMV_Image_DS <- renderImage({
+output$histoMV_Image_DS <- renderPlot({
     rv$current.obj
+    if (is.null(rv$current.obj)) {return(NULL)}
     
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$histoMV_DS, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
+        result = tryCatch(
+            {
+                wrapper.mvHisto(rv$current.obj)
+            }
+            , warning = function(w) {
+                shinyjs::info(w)
+            }, error = function(e) {
+                shinyjs::info(e)
+            }, finally = {
+                #cleanup-code 
+            })
+
+})
 
 
-output$histoMV_Image <- renderImage({
-    rv$current.obj
+output$histoMV_Image <- renderPlot({
+        rv$current.obj
+        if (is.null(rv$current.obj)) {return(NULL)}
+        result = tryCatch(
+            {
+                if (!is.null(rv$current.obj)){wrapper.mvHisto(rv$current.obj)}
+            }
+            , warning = function(w) {
+                shinyjs::info(w)
+            }, error = function(e) {
+                shinyjs::info(e)
+            }, finally = {
+                #cleanup-code 
+            })
+        
+        
+        
+    })
     
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$histoMV, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
+
+##' distribution of missing values in current.obj
+##' @author Samuel Wieczorek
+output$histo.missvalues.per.lines_Image <- renderPlot({
+        rv$current.obj
+        if (is.null(rv$current.obj)) {return(NULL)}
+        result = tryCatch(
+            {
+wrapper.mvPerLinesHisto(rv$current.obj, 
+                                        c(2:length(colnames(Biobase::pData(rv$current.obj)))))
+            }
+            , warning = function(w) {
+                shinyjs::info(w)
+            }, error = function(e) {
+                shinyjs::info(e)
+            }, finally = {
+                #cleanup-code 
+            })
+    })
 
 
 ##' distribution of missing values in current.obj
 ##' @author Samuel Wieczorek
-output$histo.missvalues.per.lines_Image <- renderImage({
-    rv$current.obj
+output$histo.missvalues.per.lines.per.conditions_Image <- renderPlot({
+
+        rv$current.obj
+        if (is.null(rv$current.obj)) {return(NULL)}
+        result = tryCatch(
+            {
+                wrapper.mvPerLinesHistoPerCondition(rv$current.obj, 
+                                                    c(2:length(colnames(Biobase::pData(rv$current.obj)))))
+            }
+            , warning = function(w) {
+                shinyjs::info(w)
+            }, error = function(e) {
+                shinyjs::info(e)
+            }, finally = {
+                #cleanup-code 
+            })
+        
+    })    
     
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$histoMVPerLines, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
 
 
-
-##' distribution of missing values in current.obj
-##' @author Samuel Wieczorek
-output$histo.missvalues.per.lines.per.conditions_Image <- renderImage({
-    rv$current.obj
-    
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$histoMVPerLinesConditions, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
-
-
-
-output$histoMV_DS_Image <- renderImage({
-    rv$current.obj
-    
-     list(src = paste(tempdir(),sessionID,gGraphicsFilenames$histoMV_DS, sep="/"),
-          contentType = "image/png"
-          #width = width,
-          #height = height,
-          )
-}, deleteFile = FALSE)
+# output$histoMV_DS_Image <- renderImage({
+#     rv$current.obj
+#     
+#      list(src = paste(tempdir(),sessionID,gGraphicsFilenames$histoMV_DS, sep="/"),
+#           contentType = "image/png"
+#           #width = width,
+#           #height = height,
+#           )
+# }, deleteFile = FALSE)
 
 
 ##' distribution of missing values in current.obj
@@ -3073,29 +2387,50 @@ output$histoMV_DS_Image <- renderImage({
 
 ##' distribution of missing values in current.obj
 ##' @author Samuel Wieczorek
-output$histo.missvalues.per.lines_DS <- renderImage({
+output$histo.missvalues.per.lines_DS <- renderPlot({
     rv$current.obj
-    
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$histoMVPerLines_DS, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
+        rv$current.obj
+        if (is.null(rv$current.obj)) {return(NULL)}
+        
+        result = tryCatch(
+            {
+                wrapper.mvPerLinesHisto(rv$current.obj, 
+                                        c(2:length(colnames(Biobase::pData(rv$current.obj)))))
+            }
+            , warning = function(w) {
+                shinyjs::info(w)
+            }, error = function(e) {
+                shinyjs::info(e)
+            }, finally = {
+                #cleanup-code 
+            })
+        
+        
+    })
 
 
 
 ##' distribution of missing values in current.obj
 ##' @author Samuel Wieczorek
-output$histo.missvalues.per.lines.per.conditions_DS <- renderImage({
-    rv$current.obj
-    
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$histoMVPerLinesConditions_DS, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
+output$histo.missvalues.per.lines.per.conditions_DS <- renderPlot({
+
+        rv$current.obj
+        if (is.null(rv$current.obj)) {return(NULL)}
+        
+        result = tryCatch(
+            {
+                wrapper.mvPerLinesHistoPerCondition(rv$current.obj, 
+                                                    c(2:length(colnames(Biobase::pData(rv$current.obj)))))
+            }
+            , warning = function(w) {
+                shinyjs::info(w)
+            }, error = function(e) {
+                shinyjs::info(e)
+            }, finally = {
+                #cleanup-code 
+            })
+        
+    })
 
 
 
@@ -3130,15 +2465,30 @@ output$histo.missvalues.per.lines.per.conditions_DS <- renderImage({
 
 ##' xxxxxxxxxxxxxxxxxxxxxxxx
 ##' @author Samuel Wieczorek
-output$showImageNA <- renderImage({
-    rv$current.obj
-    
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$imageNA, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
+output$showImageNA <- renderPlot({
+
+        rv$current.obj
+        #input$toto
+        
+        isolate({
+            
+            if (is.null(rv$current.obj)) {return(NULL)}
+            result = tryCatch(
+                {
+                    wrapper.mvImage(rv$current.obj)
+                }
+                , warning = function(w) {
+                    shinyjs::info(w)
+                }, error = function(e) {
+                    shinyjs::info(e)
+                }, finally = {
+                    #cleanup-code 
+                })
+            
+        })
+        
+        
+    })
 
 
 
@@ -3265,32 +2615,84 @@ output$ChooseLegendForAxis_DS <- renderUI({
 
 ##' boxplot of intensities in current.obj
 ##' @author Samuel Wieczorek
-output$viewBoxPlot_DS <- renderImage({
-    rv$current.obj
-    input$legendXAxis_DS
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$boxplot, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
+output$viewBoxPlot_DS <- renderPlot({
+        rv$current.obj
+        input$legendXAxis_DS
+        if (is.null(rv$current.obj)) {return(NULL)}
+        
+        
+        legDS <- NULL
+        if (is.null(input$legendXAxis_DS)){
+            .names <- colnames(Biobase::pData(rv$current.obj))[-1]
+            legDS <- .names[1]}
+        else{legDS <- input$legendXAxis_DS}
+        
+        result = tryCatch(
+            {
+                wrapper.boxPlotD(rv$current.obj,  legDS)
+
+            }
+            , warning = function(w) {
+                shinyjs::info(w)
+            }, error = function(e) {
+                shinyjs::info(e)
+            }, finally = {
+                #cleanup-code 
+            })
+        
+        
+    })
+    
 
 
 
 
 ##' Distribution of intensities in current.obj
 ##' @author Samuel Wieczorek
-output$viewDensityplot_DS <- renderImage({
-    rv$current.obj
-    input$lab2Show_DS
-    input$whichGroup2Color_DS
-    
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$densityPlot, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
+output$viewDensityplot_DS <- renderPlot({
+        rv$current.obj
+        input$lab2Show_DS
+        input$whichGroup2Color_DS
+        if (is.null(rv$current.obj)) {return(NULL)}
+        
+        labels_DS <- NULL
+        labelsToShow_DS <- NULL
+        gToColor_DS <- NULL
+        if (is.null(input$lab2Show_DS)) { 
+            labelsToShow_DS <- c(1:nrow(Biobase::pData(rv$current.obj)))
+        }
+        else { labelsToShow_DS <- input$lab2Show_DS}
+        
+        if (is.null(input$whichGroup2Color_DS)){
+            gToColor_DS <- "Condition"
+        }else{gToColor_DS <- input$whichGroup2Color_DS}
+        
+        if (is.null(input$whichGroup2Color_DS) || (input$whichGroup2Color_DS == "Condition")){
+            labels_DS <- Biobase::pData(rv$current.obj)[,"Label"]
+        }else {
+            labels_DS <- paste(Biobase::pData(rv$current.obj)[,"Label"],
+                               Biobase::pData(rv$current.obj)[,"Bio.Rep"],
+                               Biobase::pData(rv$current.obj)[,"Tech.Rep"],
+                               Biobase::pData(rv$current.obj)[,"Analyt.Rep"],
+                               sep= "_")
+        }
+        
+        result = tryCatch(
+            {
+                wrapper.densityPlotD(rv$current.obj, labels_DS, as.numeric(labelsToShow_DS), 
+                                     gToColor_DS)
+            }
+            , warning = function(w) {
+                shinyjs::info(w)
+            }, error = function(e) {
+                shinyjs::info(e)
+            }, finally = {
+                #cleanup-code 
+            })
+        
+        
+        
+    })
 
 
 
@@ -3298,49 +2700,188 @@ output$viewDensityplot_DS <- renderImage({
 
 ##' boxplot of intensities in current.obj
 ##' @author Samuel Wieczorek
-output$viewBoxPlotNorm <- renderImage({
-    input$legendXAxis
-    rv$current.obj
-    input$whichGroup2Color
-    input$normalization.method
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$boxplotNorm, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
+output$viewBoxPlotNorm <- renderPlot({
+
+        rv$current.obj
+        input$whichGroup2Color
+        input$normalization.method
+        input$perform.normalization
+        
+        if (is.null(rv$current.obj) || is.null(rv$dataset[[input$datasets]]) ||
+            is.null(input$normalization.method)) {return(NULL)}
+        
+        
+        gToColorNorm <- NULL
+        
+        if (is.null(input$whichGroup2Color)){
+            gToColorNorm <- "Condition"
+        }else{gToColorNorm <- input$whichGroup2Color}
+        
+        leg <- NULL
+        if (is.null(input$legendXAxis_DS)){
+            .names <- colnames(Biobase::pData(rv$current.obj))[-1]
+            leg <- .names[1]}
+        else{leg <- input$legendXAxis_DS}
+        
+        result = tryCatch(
+            {
+                wrapper.boxPlotD(rv$current.obj,leg ,gToColorNorm)
+            }
+            , warning = function(w) {
+                shinyjs::info(w)
+            }, error = function(e) {
+                shinyjs::info(e)
+            }, finally = {
+                #cleanup-code 
+            })
+        
+        
+        
+    })
+    
 
 
 
 ##' Distribution of intensities in current.obj
 ##' @author Samuel Wieczorek
-output$viewDensityplotNorm<- renderImage({
-    rv$current.obj
-    input$lab2Show
-    input$whichGroup2Color
-    input$normalization.method
-    
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$densityPlotNorm, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
+output$viewDensityplotNorm<- renderPlot({
+
+        rv$dataset[[input$datasets]]
+        rv$current.obj
+        input$legendXAxis
+        input$whichGroup2Color
+        input$lab2Show
+        input$normalization.method
+        input$perform.normalization
+        
+        if (is.null(rv$current.obj) || is.null(rv$dataset[[input$datasets]]) ||
+            is.null(input$normalization.method)) {return(NULL)}
+        
+        
+        leg <- NULL
+        grp <- NULL
+        
+        labelsNorm <- NULL
+        labelsToShowNorm <- NULL
+        gToColorNorm <- NULL
+        if (is.null(input$lab2Show)) { 
+            labelsToShowNorm <- c(1:nrow(Biobase::pData(rv$current.obj)))
+        }
+        else { labelsToShowNorm <- input$lab2Show}
+        
+        if (is.null(input$whichGroup2Color)){
+            gToColorNorm <- "Condition"
+        }else{gToColorNorm <- input$whichGroup2Color}
+        
+        
+        # if (is.null(input$legendXAxis)){
+        #     .names <- colnames(Biobase::pData(rv$current.obj))[-1]
+        #     leg <- .names[1]}
+        # else{leg <- input$legendXAxis}
+        # 
+        # 
+        #_-----------------------------------------
+        
+        if (is.null(input$whichGroup2Color) 
+            || (input$whichGroup2Color == "Condition")){
+            labelsNorm <- Biobase::pData(rv$current.obj)[,"Label"]
+        }else {
+            labelsNorm <- paste(Biobase::pData(rv$current.obj)[,"Label"],
+                                Biobase::pData(rv$current.obj)[,"Bio.Rep"],
+                                Biobase::pData(rv$current.obj)[,"Tech.Rep"],
+                                Biobase::pData(rv$current.obj)[,"Analyt.Rep"],
+                                sep= "_")
+        }
+        
+        result = tryCatch(
+            {
+                wrapper.densityPlotD(rv$current.obj, labelsNorm, as.numeric(labelsToShowNorm), 
+                                     gToColorNorm)
+            }
+            , warning = function(w) {
+                shinyjs::info(w)
+            }, error = function(e) {
+                shinyjs::info(e)
+            }, finally = {
+                #cleanup-code 
+            })
+        
+        
+        
+    })   
 
 #######################
-output$viewComparisonNorm<- renderImage({
-    rv$current.obj
-    input$whichGroup2Color
-    input$lab2Show
-    input$normalization.method
-    
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$compareNorm, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
+output$viewComparisonNorm<- renderPlot({
 
+        rv$dataset[[input$datasets]]
+        rv$current.obj
+        input$legendXAxis
+        input$whichGroup2Color
+        input$lab2Show
+        input$normalization.method
+        input$perform.normalization
+        
+        if (is.null(rv$current.obj) 
+            || is.null(rv$dataset[[input$datasets]]) 
+            || is.null(input$normalization.method)
+            || 
+            (rv$typeOfDataset != rv$current.obj@experimentData@other$typeOfData)) {return(NULL)}
+        
+        
+        leg <- NULL
+        grp <- NULL
+        
+        labelsNorm <- NULL
+        labelsToShowNorm <- NULL
+        gToColorNorm <- NULL
+        if (is.null(input$lab2Show)) { 
+            labelsToShowNorm <- c(1:nrow(Biobase::pData(rv$current.obj)))
+        }
+        else { labelsToShowNorm <- input$lab2Show}
+        
+        if (is.null(input$whichGroup2Color)){
+            gToColorNorm <- "Condition"
+        }else{gToColorNorm <- input$whichGroup2Color}
+        
+        
+        # if (is.null(input$legendXAxis)){
+        #     .names <- colnames(Biobase::pData(rv$current.obj))[-1]
+        #     leg <- .names[1]}
+        # else{leg <- input$legendXAxis}
+        # 
+        # 
+        #_-----------------------------------------
+        
+        if (is.null(input$whichGroup2Color) 
+            || (input$whichGroup2Color == "Condition")){
+            labelsNorm <- Biobase::pData(rv$current.obj)[,"Label"]
+        }else {
+            labelsNorm <- paste(Biobase::pData(rv$current.obj)[,"Label"],
+                                Biobase::pData(rv$current.obj)[,"Bio.Rep"],
+                                Biobase::pData(rv$current.obj)[,"Tech.Rep"],
+                                Biobase::pData(rv$current.obj)[,"Analyt.Rep"],
+                                sep= "_")
+        }
+        
+        result = tryCatch(
+            {
+                compareNormalizationD(Biobase::exprs(rv$dataset[[input$datasets]]),
+                                      Biobase::exprs(rv$current.obj),
+                                      labelsNorm,
+                                      as.numeric(labelsToShowNorm),
+                                      gToColorNorm)
+            }
+            #, warning = function(w) {
+            #   shinyjs::info(w)
+            #}
+            , error = function(e) {
+                shinyjs::info(e)
+            }, finally = {
+                #cleanup-code 
+            })
+        
+    })
+    
 
 
 
@@ -3349,48 +2890,91 @@ output$viewComparisonNorm<- renderImage({
 ##' distribution of the variance in current.obj
 ##' 
 ##' @author Samuel Wieczorek
-output$viewDistVariance <- renderImage({
-    rv$current.obj
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$varDist, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
+output$viewDistVariance <- renderPlot({
+
+        rv$current.obj
+        
+        if (is.null(rv$current.obj)) {return(NULL)}
+        result = tryCatch(
+            {
+                wrapper.varianceDistD(rv$current.obj)
+            }
+            , warning = function(w) {
+                shinyjs::info(w)
+            }, error = function(e) {
+                shinyjs::info(e)
+            }, finally = {
+                #cleanup-code 
+            })
+
+    })
 
 
 ##' Draw a correlation matrix of intensities in current.obj
 ##' 
 ##' @author Samuel Wieczorek
-output$corrMatrix <- renderImage({
-    input$expGradientRate
-    rv$current.obj
-    
-    
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$corrMatrix, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
+output$corrMatrix <- renderPlot({
+
+        rv$current.obj
+        input$expGradientRate
+        if (is.null(rv$current.obj)) {return(NULL)}
+        
+        gradient <- NULL
+        if (is.null(input$expGradientRate)){gradient <- defaultGradientRate}
+        else{gradient <- input$expGradientRate}
+        
+        result = tryCatch(
+            {
+                wrapper.corrMatrixD(rv$current.obj, rate = gradient)
+            }
+            , warning = function(w) {
+                shinyjs::info(w)
+            }, error = function(e) {
+                shinyjs::info(e)
+            }, finally = {
+                #cleanup-code 
+            })
+        
+        
+    }) 
 
 
 
 ##' Draw a heatmap of current data
 ##' 
 ##' @author Samuel Wieczorek
-output$heatmap <- renderImage({
-    rv$current.obj
-    input$linkage
-    input$distance
+output$heatmap <- renderPlot({
+
+        rv$current.obj
+        input$linkage
+        input$distance
+        if (is.null(rv$current.obj)) {return(NULL)}
+        
+        
+        if (!is.null(input$linkage) && !is.null(input$distance)
+            && (getNumberOfEmptyLines(Biobase::exprs(rv$current.obj)) == 0)) {
+            
+            result = tryCatch(
+                {
+
+                    wrapper.heatmapD(rv$current.obj,
+                                     input$distance, 
+                                     input$linkage,
+                                     TRUE) 
+
+                }
+                , warning = function(w) {
+                    shinyjs::info(w)
+                }, error = function(e) {
+                    shinyjs::info(e)
+                }, finally = {
+                    #cleanup-code 
+                })
+            
+            
+        }
+    })
     
-    
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$heatmap, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
 
 
 ##' Select the labels to be highlighted in densityplots
@@ -3722,40 +3306,88 @@ observe({
 
 
 
-output$volcanoplot <- renderImage({
-    rv$seuilLogFC
-    input$condition1
-    input$condition2
-    input$diffAnaMethod
-    rv$resAnaDiff
+output$volcanoplot <- renderPlot({
+        rv$seuilPVal
+        rv$seuilLogFC
+        input$condition1
+        input$condition2
+        input$diffAnaMethod
+        rv$resAnaDiff
+        
+        if (is.null(input$condition1) || is.null(input$condition2) ||
+            is.null(rv$seuilLogFC) || is.na(rv$seuilLogFC) ||
+            (input$condition1 == input$condition2) ||
+            (length(rv$resAnaDiff$logFC) == 0)) { return(NULL)}
+        
+        cond <- c(input$condition1, input$condition2)
+        result = tryCatch(
+            {
+                diffAnaVolcanoplot(logFC = rv$resAnaDiff$logFC, 
+                                   pVal = rv$resAnaDiff$P.Value, 
+                                   threshold_logFC = rv$seuilLogFC,
+                                   conditions = cond)
+            }
+            , warning = function(w) {
+                shinyjs::info(w)
+            }, error = function(e) {
+                shinyjs::info(e)
+            }, finally = {
+                #cleanup-code 
+            })
+        
+        
+    })   
     
-    
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$volcanoPlot_1, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
 
 
 
 
-output$volcanoplotStep3 <- renderImage({
+output$volcanoplotStep3 <- renderPlot({
+
+        rv$seuilPVal
+        rv$seuilLogFC
+        input$condition1
+        input$condition2
+        input$diffAnaMethod
+        rv$resAnaDiff
+        
+        if (is.null(input$condition1) || is.null(input$condition2) ||
+            is.null(rv$seuilLogFC) || is.na(rv$seuilLogFC) ||
+            is.null(rv$seuilPVal) || is.na(rv$seuilPVal) ||
+            (input$condition1 == input$condition2) ||
+            (length(rv$resAnaDiff$logFC) == 0)) { return(NULL)}
+        
+        cond <- c(input$condition1, input$condition2)
+        result = tryCatch(
+            {
+                if ("logFC" %in% names(fData(rv$current.obj) )){
+                    diffAnaVolcanoplot(fData(rv$current.obj)$logFC,
+                                       fData(rv$current.obj)$P.Value, 
+                                       rv$current.obj@experimentData@other$threshold.p.value,
+                                       rv$current.obj@experimentData@other$threshold.logFC,
+                                       c(rv$current.obj@experimentData@other$condition1,
+                                         rv$current.obj@experimentData@other$condition2)
+                    )
+                }else{
+                    cond <- c(input$condition1, input$condition2)
+                    
+                    diffAnaVolcanoplot(rv$resAnaDiff$logFC, 
+                                       rv$resAnaDiff$P.Value, 
+                                       rv$seuilPVal, 
+                                       rv$seuilLogFC,
+                                       cond)
+                }
+            }
+            , warning = function(w) {
+                shinyjs::info(w)
+            }, error = function(e) {
+                shinyjs::info(e)
+            }, finally = {
+                #cleanup-code 
+            })
+
+    })
     
-    rv$seuilPVal
-    rv$seuilLogFC
-    input$condition1
-    input$condition2
-    input$diffAnaMethod
-    rv$resAnaDiff
-    
-    
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$volcanoPlot_3, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
 
 
 output$disableAggregationTool <- renderUI({
@@ -3915,16 +3547,30 @@ isContainedIn <- function(strA, strB){
 
 ##' boxplot of intensities in current.obj
 ##' @author Samuel Wieczorek
-output$viewNAbyMean <- renderImage({
-    rv$current.obj
+output$viewNAbyMean <- renderPlot({
+        rv$current.obj
+        
+        if (is.null(rv$current.obj)) {return(NULL)}
+        
+        isolate({
+            result = tryCatch(
+                {
+                    wrapper.mvTypePlot(rv$current.obj)
+                }
+                , warning = function(w) {
+                    shinyjs::info(w)
+                }, error = function(e) {
+                    shinyjs::info(e)
+                }, finally = {
+                    #cleanup-code 
+                })
+            
+            
+        })
+        
+        
+    })
     
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$MVtypePlot, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
-
 
 
 
@@ -4175,20 +3821,16 @@ observe({
     if (input$perform.filtering.Contaminants == 0){return(NULL)}
     
     isolate({
-        
-        
-        
+
         result = tryCatch(
             {
-                
-                
                 temp <- rv$current.obj
                 if (!is.null(input$idBoxContaminants)
                     || (input$idBoxContaminants != "")) {
                     ind <- getIndicesOfLinesToRemove(temp,
                                                      input$idBoxContaminants, 
                                                      input$prefixContaminants)
-                    if (!is.null(ind))  {
+                    if (length(ind) > 0)  {
                         rv$deleted.contaminants <- temp[ind]
                         
                         #temp <- temp[-ind]
@@ -4229,7 +3871,7 @@ observe({
                                                      input$idBoxReverse,
                                                      input$prefixReverse)
                     
-                    if (!is.null(ind))  {
+                    if (length(ind) >0)  {
                         rv$deleted.reverse <- temp[ind]
                         temp <- deleteLinesFromIndices(temp, ind, 
                                                        paste(length(ind), "reverse were removed from dataset",
@@ -4535,25 +4177,45 @@ output$aggregationStats <- renderUI ({
     HTML(text)
     })
 
-output$aggregationPlotShared <- renderImage({
-   rv$matAdj
-   
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$AgregMatSharedPeptides, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
+output$aggregationPlotShared <- renderPlot({
 
-output$aggregationPlotUnique <- renderImage({
-   rv$matAdj
-    list(src = paste(tempdir(),sessionID,gGraphicsFilenames$AgregMatUniquePeptides, sep="/"),
-         contentType = "image/png"
-         #width = width,
-         #height = height,
-    )
-}, deleteFile = FALSE)
+        rv$matAdj
+        
+        if (is.null(rv$matAdj)) {return(NULL)}
+        result = tryCatch(
+            {
+                GraphPepProt(rv$matAdj$matWithSharedPeptides)
+            }
+            , warning = function(w) {
+                shinyjs::info(w)
+            }, error = function(e) {
+                shinyjs::info(e)
+            }, finally = {
+                #cleanup-code 
+            })
+        
+        
+    })
     
+
+output$aggregationPlotUnique <- renderPlot({
+        rv$matAdj
+        
+        if (is.null(rv$matAdj)) {return(NULL)}
+        result = tryCatch(
+            {
+                GraphPepProt(rv$matAdj$matWithUniquePeptides)
+            }
+            , warning = function(w) {
+                shinyjs::info(w)
+            }, error = function(e) {
+                shinyjs::info(e)
+            }, finally = {
+                #cleanup-code 
+            })
+        
+        
+    })
 
 
 
@@ -4677,7 +4339,7 @@ output$DS_PlotHeatmap <- renderUI({
     conditionalPanel(
         condition = "true",
         busyIndicator("Calculation in progress",wait = 0),
-        imageOutput("heatmap", width = "900px", height = "600px")
+        plotOutput("heatmap", width = "900px", height = "600px")
     )
 })
 
@@ -4798,7 +4460,7 @@ ConditionTabPanel <- reactive({
             h3("Select conditions to perform the differential analysis"),
             helpText("Please choose the labels for condition to analyse"),
             if (GetNbNA() > 0){
-                h3("There are some NA in your data. please impute before.")
+                h3("There are some NA in your data. Please impute before.")
             }
             else{
                 h3("Conditions setup")
@@ -4813,14 +4475,9 @@ ConditionTabPanel <- reactive({
 ##' Missing values imputation - reactivity behavior
 ##' @author Samuel Wieczorek
 observe({
-    input$missing.value.algorithm
-    input$datasets
-    input$perform.imputation.button
-    
     if (is.null(input$perform.imputation.button) ){return(NULL)}
     if (input$perform.imputation.button == 0){return(NULL)}
     if (is.null(input$missing.value.algorithm) ){return(NULL)}
-    if (is.null(input$datasets) ){return(NULL)}
     
     isolate({
         
@@ -4828,7 +4485,7 @@ observe({
             {
                 .temp <- unlist(strsplit(input$missing.value.algorithm, " - "))
                 if (.temp[1] == "None"){
-                    rv$current.obj <- rv$dataset[[input$datasets]]
+                    #rv$current.obj <- rv$dataset[[input$datasets]]
                 } else {
                     if ((.temp[1] == "LeftCensored") || (.temp[1] == "RandomOccurence")) 
                     {
@@ -4972,8 +4629,8 @@ output$AggregationWellPanel_Step1 <- renderUI({
                      ),
                      busyIndicator("Calculation in progress",wait = 0),
                      fluidRow(
-                         column(width=6, imageOutput("aggregationPlotUnique")),
-                         column(width=6, imageOutput("aggregationPlotShared"))
+                         column(width=6, plotOutput("aggregationPlotUnique")),
+                         column(width=6, plotOutput("aggregationPlotShared"))
                      ),
                       uiOutput("aggregationStats"),
                      uiOutput("ObserverAggregationDone")

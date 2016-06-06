@@ -1,3 +1,18 @@
+CHANGES IN VERSION 1.4.5 
+-------------------------
+
+NEW FEATURES
+
+
+BUG FIXES
+
+    * A bug related to the filterinf of contaminants and Reverse. When the user write a prefix
+    int the text field and no lines correspond to the specified prefix, then the entire dataset was deleted.
+    This bug has been fixed
+    * When the user save the dataset after the imputation step, the old versions of datasets are erased. This    bug has also been fixed.
+    
+    
+    
 CHANGES IN VERSION 1.4.1 
 -------------------------
 
