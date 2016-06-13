@@ -2228,19 +2228,25 @@ output$GlobalPieChart <- renderPlot({
         p <- rep("",4)
         if (is.null(input$idBoxContaminants)) {p[1] <- ""}
         else {p[1] <-input$idBoxContaminants}
+        
         if (is.null(input$idBoxReverse)) {p[2] <- ""}
         else {p[2] <-input$idBoxReverse}
+        
         if (is.null(input$prefixContaminants)) {p[3] <- ""}
         else {p[3] <-input$prefixContaminants}
+        
         if (is.null(input$prefixReverse)) {p[4] <- ""}
         else {p[4] <-input$prefixReverse}
+        
+        
         result = tryCatch(
             {
                 proportionConRev(rv$current.obj,p[1], p[3], p[2],p[4])
             }
-            , warning = function(w) {
-                shinyjs::info(w)
-            }, error = function(e) {
+            #, warning = function(w) {
+           #     shinyjs::info(w)
+            #}
+           , error = function(e) {
                 shinyjs::info(e)
             }, finally = {
                 #cleanup-code 
@@ -3802,9 +3808,10 @@ observe({
             
         }
     }
-    , warning = function(w) {
-        shinyjs::info(w)
-    }, error = function(e) {
+    #, warning = function(w) {
+    #    shinyjs::info(w)
+    #}
+    , error = function(e) {
         shinyjs::info(e)
     }, finally = {
         #cleanup-code 
@@ -3822,6 +3829,7 @@ observe({
     
     isolate({
 
+        
         result = tryCatch(
             {
                 temp <- rv$current.obj
@@ -3830,7 +3838,9 @@ observe({
                     ind <- getIndicesOfLinesToRemove(temp,
                                                      input$idBoxContaminants, 
                                                      input$prefixContaminants)
-                    if (length(ind) > 0)  {
+                   
+                    if (!is.null(ind)){
+                        if (length(ind) > 0)  {
                         rv$deleted.contaminants <- temp[ind]
                         
                         #temp <- temp[-ind]
@@ -3865,13 +3875,17 @@ observe({
                         
                     }
                 }
+                }
+                
                 
                 if (!is.null(input$idBoxReverse) || (input$idBoxReverse != "")){
                     ind <- getIndicesOfLinesToRemove(temp,
                                                      input$idBoxReverse,
                                                      input$prefixReverse)
                     
-                    if (length(ind) >0)  {
+                   
+                    if (!is.null(ind)){
+                        if(length(ind) >0)  {
                         rv$deleted.reverse <- temp[ind]
                         temp <- deleteLinesFromIndices(temp, ind, 
                                                        paste(length(ind), "reverse were removed from dataset",
@@ -3901,7 +3915,7 @@ observe({
                         )
                     }
                 }
-                
+                }
                 rv$current.obj <- temp
                 
                 updateSelectInput(session, "idBoxReverse",
@@ -3920,7 +3934,7 @@ observe({
             #    shinyjs::info(w)
            # }
         , error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(paste("line 3933",e))
             }, finally = {
                 #cleanup-code 
             })
