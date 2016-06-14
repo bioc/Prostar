@@ -2,7 +2,6 @@ options(shiny.maxRequestSize=30*1024^2)
 options(shiny.trace=FALSE)
 options(shiny.reactlog=TRUE)
 
-#library(MSnbase)
 library(shiny)
 library(rhandsontable)
 library(data.table)
@@ -167,6 +166,7 @@ output$hot <- renderRHandsontable({
     rhandsontable(DT) %>% 
     hot_cols(colWidths = c(200, 100, 100, 100, 100) ) %>%
     hot_rows(rowHeights = 30) %>%
+    hot_context_menu(allowRowEdit = FALSE, allowColEdit = FALSE) %>%
     hot_col(col = "Experiment", readOnly = TRUE)
 })
 
@@ -546,6 +546,8 @@ observe({
     if (is.null(rv$current.obj)) {return (NULL)}
     if (is.null(input$condition1)) {return (NULL)}
     if (is.null(input$condition2)) {return (NULL)}
+    if (input$condition1 == input$condition2) {return (NULL)}
+
     
     data <- NULL
     
@@ -573,10 +575,11 @@ observe({
                     )
                 }
             }
-            , warning = function(w) {
-                shinyjs::info(w)
-            }, error = function(e) {
-                shinyjs::info(paste("527",e))
+            #, warning = function(w) {
+            #    shinyjs::info(conditionMessage(w))
+            #}
+            , error = function(e) {
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code
                 
@@ -624,6 +627,9 @@ loadObjectInMemoryFromConverter <- reactive({
     
     name <- paste ("Original", " - ", rv$typeOfDataset, sep="")
     rv$dataset[[name]] <- rv$current.obj
+    
+    print(dim(exprs((rv$dataset[[name]]))))
+    
     writeToCommandLogFile("dataset <- list()")
     
     writeToCommandLogFile(
@@ -721,9 +727,9 @@ observe({
                     loadObjectInMemoryFromConverter()
                 }
                 , warning = function(w) {
-                    shinyjs::info(w)
+                    shinyjs::info(conditionMessage(w))
                 }, error = function(e) {
-                    shinyjs::info(e)
+                    shinyjs::info(conditionMessage(e))
                 }, finally = {
                     #cleanup-code 
                 })
@@ -748,7 +754,7 @@ observe({
         rv$current.obj <- readRDS(input$file$datapath)
         rv$current.obj.name <- DeleteFileExtension(input$file$name)
         rv$typeOfDataset <- rv$current.obj@experimentData@other$typeOfData
-
+        loadObjectInMemoryFromConverter()
         
         writeToCommandLogFile(
             paste("current.obj <- readRDS('",
@@ -756,7 +762,7 @@ observe({
                                 "')", sep="")
         )
        
-        loadObjectInMemoryFromConverter()
+        
 }
     })
 })
@@ -794,9 +800,9 @@ observe({
                 }
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -938,9 +944,9 @@ observe({
                           name)
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -991,9 +997,9 @@ output$showFDR <- renderText({
                 HTML(paste("<h4>FDR = ", round(100*fdr, digits=2)," % </h4>", sep=""))
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -1142,9 +1148,9 @@ output$calibrationPlot <- renderPlot({
 
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -1217,9 +1223,9 @@ output$calibrationPlotAll <- renderPlot({
             rv$errMsgCalibrationPlotAll <- l$warnings[grep( "Warning:", l$warnings)]
         }
         , warning = function(w) {
-            shinyjs::info(w)
+            shinyjs::info(conditionMessage(w))
         }, error = function(e) {
-            shinyjs::info(e)
+            shinyjs::info(conditionMessage(e))
         }, finally = {
             #cleanup-code 
         })
@@ -1251,9 +1257,9 @@ observe({
                 })
             # }
             # , warning = function(w) {
-            #     shinyjs::info(w)
+            #     shinyjs::info(conditionMessage(w))
             # }, error = function(e) {
-            #     shinyjs::info(e)
+            #     shinyjs::info(conditionMessage(e))
             # }, finally = {
             #     #cleanup-code 
             # })
@@ -1291,9 +1297,9 @@ output$viewExprs <- DT::renderDataTable({
             return(dat)
         # }
         # , warning = function(w) {
-        #     shinyjs::info(w)
+        #     shinyjs::info(conditionMessage(w))
         # }, error = function(e) {
-        #     shinyjs::info(e)
+        #     shinyjs::info(conditionMessage(e))
         # }, finally = {
         #     #cleanup-code 
         # })
@@ -1393,10 +1399,10 @@ observe({
                 updateTabsetPanel(session, "abc", selected = "ValidateAndSaveAnaDiff")
             }
             #, warning = function(w) {
-            #    shinyjs::info(w)
+            #    shinyjs::info(conditionMessage(w))
             #}
             , error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -1430,9 +1436,9 @@ output$viewProcessingData <- DT::renderDataTable({
                        [-grep("Subset", (rv$current.obj)@processingData@processing)])
         }
         , warning = function(w) {
-            shinyjs::info(w)
+            shinyjs::info(conditionMessage(w))
         }, error = function(e) {
-            shinyjs::info(e)
+            shinyjs::info(conditionMessage(e))
         }, finally = {
             #cleanup-code 
         })
@@ -1461,9 +1467,9 @@ output$viewpData <- DT::renderDataTable({
             as.data.frame(Biobase::pData(rv$current.obj))
         }
         , warning = function(w) {
-            shinyjs::info(w)
+            shinyjs::info(conditionMessage(w))
         }, error = function(e) {
-            shinyjs::info(e)
+            shinyjs::info(conditionMessage(e))
         }, finally = {
             #cleanup-code 
         })
@@ -1489,9 +1495,9 @@ output$viewfData <- DT::renderDataTable({
             as.data.frame(Biobase::fData(rv$current.obj))
         }
         , warning = function(w) {
-            shinyjs::info(w)
+            shinyjs::info(conditionMessage(w))
         }, error = function(e) {
-            shinyjs::info(e)
+            shinyjs::info(conditionMessage(e))
         }, finally = {
             #cleanup-code 
         })
@@ -1519,9 +1525,9 @@ output$viewExprsMissValues <- DT::renderDataTable({
                                 Biobase::exprs(rv$current.obj)))
         }
         , warning = function(w) {
-            shinyjs::info(w)
+            shinyjs::info(conditionMessage(w))
         }, error = function(e) {
-            shinyjs::info(e)
+            shinyjs::info(conditionMessage(e))
         }, finally = {
             #cleanup-code 
         })
@@ -1767,9 +1773,9 @@ observe({
                 updateTabsetPanel(session, "tabImport", selected = "Convert")
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -2064,9 +2070,9 @@ output$overviewDemoDataset <- renderUI({
                 )
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -2122,9 +2128,9 @@ output$overview <- renderUI({
                 )
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -2244,10 +2250,10 @@ output$GlobalPieChart <- renderPlot({
                 proportionConRev(rv$current.obj,p[1], p[3], p[2],p[4])
             }
             #, warning = function(w) {
-           #     shinyjs::info(w)
+           #     shinyjs::info(conditionMessage(w))
             #}
            , error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -2296,9 +2302,9 @@ output$histoMV_Image_DS <- renderPlot({
                 wrapper.mvHisto(rv$current.obj)
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -2314,9 +2320,9 @@ output$histoMV_Image <- renderPlot({
                 if (!is.null(rv$current.obj)){wrapper.mvHisto(rv$current.obj)}
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -2337,9 +2343,9 @@ wrapper.mvPerLinesHisto(rv$current.obj,
                                         c(2:length(colnames(Biobase::pData(rv$current.obj)))))
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -2358,9 +2364,9 @@ output$histo.missvalues.per.lines.per.conditions_Image <- renderPlot({
                                                     c(2:length(colnames(Biobase::pData(rv$current.obj)))))
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -2404,9 +2410,9 @@ output$histo.missvalues.per.lines_DS <- renderPlot({
                                         c(2:length(colnames(Biobase::pData(rv$current.obj)))))
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -2429,9 +2435,9 @@ output$histo.missvalues.per.lines.per.conditions_DS <- renderPlot({
                                                     c(2:length(colnames(Biobase::pData(rv$current.obj)))))
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -2484,9 +2490,9 @@ output$showImageNA <- renderPlot({
                     wrapper.mvImage(rv$current.obj)
                 }
                 , warning = function(w) {
-                    shinyjs::info(w)
+                    shinyjs::info(conditionMessage(w))
                 }, error = function(e) {
-                    shinyjs::info(e)
+                    shinyjs::info(conditionMessage(e))
                 }, finally = {
                     #cleanup-code 
                 })
@@ -2639,9 +2645,9 @@ output$viewBoxPlot_DS <- renderPlot({
 
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -2689,9 +2695,9 @@ output$viewDensityplot_DS <- renderPlot({
                                      gToColor_DS)
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -2734,9 +2740,9 @@ output$viewBoxPlotNorm <- renderPlot({
                 wrapper.boxPlotD(rv$current.obj,leg ,gToColorNorm)
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -2805,9 +2811,9 @@ output$viewDensityplotNorm<- renderPlot({
                                      gToColorNorm)
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -2878,10 +2884,10 @@ output$viewComparisonNorm<- renderPlot({
                                       gToColorNorm)
             }
             #, warning = function(w) {
-            #   shinyjs::info(w)
+            #   shinyjs::info(conditionMessage(w))
             #}
             , error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -2906,9 +2912,9 @@ output$viewDistVariance <- renderPlot({
                 wrapper.varianceDistD(rv$current.obj)
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -2934,9 +2940,9 @@ output$corrMatrix <- renderPlot({
                 wrapper.corrMatrixD(rv$current.obj, rate = gradient)
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -2970,9 +2976,9 @@ output$heatmap <- renderPlot({
 
                 }
                 , warning = function(w) {
-                    shinyjs::info(w)
+                    shinyjs::info(conditionMessage(w))
                 }, error = function(e) {
-                    shinyjs::info(e)
+                    shinyjs::info(conditionMessage(e))
                 }, finally = {
                     #cleanup-code 
                 })
@@ -3183,9 +3189,9 @@ output$nbSelectedItems <- renderUI({
             HTML(txt)
         }
         , warning = function(w) {
-            shinyjs::info(w)
+            shinyjs::info(conditionMessage(w))
         }, error = function(e) {
-            shinyjs::info(e)
+            shinyjs::info(conditionMessage(e))
         }, finally = {
             #cleanup-code 
         })
@@ -3251,9 +3257,9 @@ output$nbSelectedItemsStep3 <- renderUI({
             HTML(txt)
         }
         , warning = function(w) {
-            shinyjs::info(w)
+            shinyjs::info(conditionMessage(w))
         }, error = function(e) {
-            shinyjs::info(e)
+            shinyjs::info(conditionMessage(e))
         }, finally = {
             #cleanup-code 
         })
@@ -3296,9 +3302,9 @@ observe({
                 }
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -3334,9 +3340,9 @@ output$volcanoplot <- renderPlot({
                                    conditions = cond)
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -3385,9 +3391,9 @@ output$volcanoplotStep3 <- renderPlot({
                 }
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -3531,9 +3537,9 @@ output$limmaplot <- DT::renderDataTable({
             t
         }
         , warning = function(w) {
-            shinyjs::info(w)
+            shinyjs::info(conditionMessage(w))
         }, error = function(e) {
-            shinyjs::info(e)
+            shinyjs::info(conditionMessage(e))
         }, finally = {
             #cleanup-code 
         })
@@ -3564,9 +3570,9 @@ output$viewNAbyMean <- renderPlot({
                     wrapper.mvTypePlot(rv$current.obj)
                 }
                 , warning = function(w) {
-                    shinyjs::info(w)
+                    shinyjs::info(conditionMessage(w))
                 }, error = function(e) {
-                    shinyjs::info(e)
+                    shinyjs::info(conditionMessage(e))
                 }, finally = {
                     #cleanup-code 
                 })
@@ -3642,9 +3648,9 @@ observe({
             }
         }
         , warning = function(w) {
-            shinyjs::info(w)
+            shinyjs::info(conditionMessage(w))
         }, error = function(e) {
-            shinyjs::info(e)
+            shinyjs::info(conditionMessage(e))
         }, finally = {
             #cleanup-code 
         })
@@ -3726,9 +3732,9 @@ GetMaxValueThresholdFilter <- function(){
                 })
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -3758,16 +3764,17 @@ observe({
             
             keepThat <- mvFilterGetIndices(rv$dataset[[input$datasets]],
                                            input$ChooseFilters,
-                                           input$seuilNA)
-            
+                                           as.integer(input$seuilNA))
+
             if (!is.null(keepThat))
             {
                 rv$deleted.mvLines <- rv$dataset[[input$datasets]][-keepThat]
+               
                 rv$current.obj <- mvFilterFromIndices(rv$dataset[[input$datasets]],
                                                       keepThat,
-                                                      GetFilterText(input$ChooseFilters, input$seuilNA) )
+                                                      GetFilterText(input$ChooseFilters, as.integer(input$seuilNA)))
                 
-                
+               
                 #write command log
                 # l <- paste(keepThat,",", collapse="")
                 # writeToCommandLogFile(
@@ -3809,10 +3816,10 @@ observe({
         }
     }
     #, warning = function(w) {
-    #    shinyjs::info(w)
+    #    shinyjs::info(conditionMessage(w))
     #}
     , error = function(e) {
-        shinyjs::info(e)
+        shinyjs::info(conditionMessage(e))
     }, finally = {
         #cleanup-code 
     })
@@ -3931,10 +3938,10 @@ observe({
                 
             }
             #, warning = function(w) {
-            #    shinyjs::info(w)
+            #    shinyjs::info(conditionMessage(w))
            # }
         , error = function(e) {
-                shinyjs::info(paste("line 3933",e))
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -3995,9 +4002,9 @@ observe({
                 
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -4201,9 +4208,9 @@ output$aggregationPlotShared <- renderPlot({
                 GraphPepProt(rv$matAdj$matWithSharedPeptides)
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -4221,9 +4228,9 @@ output$aggregationPlotUnique <- renderPlot({
                 GraphPepProt(rv$matAdj$matWithUniquePeptides)
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -4253,9 +4260,9 @@ observe({
                 
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
@@ -4530,7 +4537,7 @@ observe({
             , warning = function(w) {
                 print(w)
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code
                 
@@ -4576,9 +4583,9 @@ observe({
                 }
             }
             , warning = function(w) {
-                shinyjs::info(w)
+                shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(e)
+                shinyjs::info(conditionMessage(e))
             }, finally = {
                 #cleanup-code 
             })
