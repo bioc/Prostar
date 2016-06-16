@@ -2,9 +2,9 @@
 import(rhandsontable)
 import(data.table)
 import(DAPAR)
+import(DAPARdata)
 import(shinyAce)
 
-importFrom(Biobase, fData, exprs, pData)
 
 importFrom(shinyjs, info)
 importFrom(DT, dataTableOutput,renderDataTable )
