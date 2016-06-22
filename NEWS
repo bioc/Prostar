@@ -1,3 +1,16 @@
+CHANGES IN VERSION 1.4.8 
+-------------------------
+
+NEW FEATURES
+    * the heigth of the sidebar panel for the choice of demo dataset has been extended
+
+BUG FIXES
+
+    * An error was catched in the differnetial analysis, step 3 if no data is selected, to avoid an                  error when Prostar computes the FDR
+    * During the calibration plot (Differential Analysis), if the user chooses a numeric value for Pi0, then th       validation of the differential analysis has an error. This bug has been fixed.
+    
+    
+    
 CHANGES IN VERSION 1.4.7 
 -------------------------
 

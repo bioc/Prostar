@@ -488,7 +488,7 @@ RunAggregation <- reactive({
     if (is.null(rv$matAdj)) { return (NULL)}
     
     n <- NULL
-    if (input$aggregationMethod == gAgregateMethod[["sum on top n"]]) { n <- input$nTopn}
+    if (input$aggregationMethod == gAgregateMethod[["sum on top n"]]) { n <- as.numeric(input$nTopn)}
     
     
     tryCatch (
@@ -628,7 +628,6 @@ loadObjectInMemoryFromConverter <- reactive({
     name <- paste ("Original", " - ", rv$typeOfDataset, sep="")
     rv$dataset[[name]] <- rv$current.obj
     
-    print(dim(exprs((rv$dataset[[name]]))))
     
     writeToCommandLogFile("dataset <- list()")
     
@@ -990,14 +989,17 @@ output$showFDR <- renderText({
                 m <- NULL
                 if (input$calibrationMethod == "Benjamini-Hochberg") { m <- 1}
                 else if (input$calibrationMethod == "numeric value") {
-                    m <- input$numericValCalibration} 
+                    m <- as.numeric(input$numericValCalibration)} 
                 else {m <- input$calibrationMethod }
                 
                 fdr <- diffAnaComputeFDR(rv$resAnaDiff, rv$seuilPVal, rv$seuilLogFC, m)
+                
+                if (!is.infinite(fdr)){
                 HTML(paste("<h4>FDR = ", round(100*fdr, digits=2)," % </h4>", sep=""))
+                }
             }
             , warning = function(w) {
-                shinyjs::info(conditionMessage(w))
+                shinyjs::info("Warning ! There is no data selected ! Please modify the p-value threshold.")
             }, error = function(e) {
                 shinyjs::info(conditionMessage(e))
             }, finally = {
@@ -1134,7 +1136,7 @@ output$calibrationPlot <- renderPlot({
                     && !is.null(input$numericValCalibration)) {
                     
                     ll <-catchToList(
-                        wrapperCalibrationPlot(t, input$numericValCalibration))
+                        wrapperCalibrationPlot(t, as.numeric(input$numericValCalibration)))
                     rv$errMsgCalibrationPlot <- ll$warnings[grep( "Warning:", ll$warnings)]
                 }
                 else if (input$calibrationMethod == "Benjamini-Hochberg") {
@@ -1322,17 +1324,15 @@ observe({
         
         result = tryCatch(
             {
-                
-                
-                
                 data <- rv$resAnaDiff
                 
                 if (is.null(data)) {return (NULL)}
                 m <- NULL
-                if (input$calibrationMethod == "Benjamini-Hochberg") { m <- 1}
+                if (input$calibrationMethod == "Benjamini-Hochberg") 
+                    { m <- 1}
+                else if (input$calibrationMethod == "numeric value") 
+                    {m <- as.numeric(input$numericValCalibration)}
                 else {m <- input$calibrationMethod }
-                
-                
                 
                 fdr <- diffAnaComputeFDR(data, rv$seuilPVal, rv$seuilLogFC, m)
                 
@@ -2014,16 +2014,20 @@ output$helpTextDataID <- renderUI({
 })
 
 
+output$showDatasetDoc <- renderUI({
+    input$demoDataset
+    if (is.null(input$demoDataset)) { return(NULL)}
+    
+    if (input$demoDataset %in% c("UPSpep25", "UPSprot25")) {
+tags$iframe(src="http://bioconductor.org/packages/release/data/experiment/vignettes/DAPARdata/inst/doc/UPSpep-prot25.pdf", 
+                width="900", height="700")}
+    else if (input$demoDataset %in% c("UPSpep2", "UPSprot2")){
+        tags$iframe(src="http://bioconductor.org/packages/release/data/experiment/vignettes/DAPARdata/inst/doc/UPSpep-prot2.pdf", 
+                    width="900", height="700")
+    }
+    
+})
 
-# output$infoAboutDemoDataset <- renderUI({
-#     input$demoDataset
-#     
-#     #help("UPSpep25", package="DAPARdata")
-#     tags$iframe(src="http://bioconductor.org/packages/release/data/experiment/vignettes/DAPARdata/inst/doc/UPSpep-prot25.pdf", 
-#                 width="800", height="500")
-#     
-#     
-# })
 
 
 
@@ -3139,12 +3143,12 @@ observe({
 })
 
 observe({
-    if (!is.null(input$seuilPVal)){rv$seuilPVal <- input$seuilPVal}
+    if (!is.null(input$seuilPVal)){rv$seuilPVal <- as.numeric(input$seuilPVal)}
 
 })
 
 observe({
-    if (!is.null(input$seuilLogFC)){rv$seuilLogFC <- input$seuilLogFC}
+    if (!is.null(input$seuilLogFC)){rv$seuilLogFC <- as.numeric(input$seuilLogFC)}
 
 })
 
@@ -4157,6 +4161,15 @@ output$aggregationStats <- renderUI ({
     if (is.null( rv$current.obj)){return(NULL)}
    # matAdj <- ComputeAdjacencyMatrix()
     
+    
+    # print(ncol(rv$matAdj$matWithSharedPeptides))
+    # print(ncol(rv$matAdj$matWithUniquePeptides))
+    # print(length(colnames(rv$matAdj$matWithSharedPeptides)))
+    # print(length(colnames(rv$matAdj$matWithUniquePeptides)))
+    # print(length(union(colnames(rv$matAdj$matWithUniquePeptides), colnames(rv$matAdj$matWithSharedPeptides))))
+    # print(length(intersect(colnames(rv$matAdj$matWithUniquePeptides), colnames(rv$matAdj$matWithSharedPeptides))))
+    # 
+    
     text <- paste("<ul style=\"list-style-type:disc;\">
                 <li>
                 Number of peptides: ", 
@@ -4178,7 +4191,6 @@ output$aggregationStats <- renderUI ({
                 <li>
                 Number of proteins:  ", ncol(rv$matAdj$matWithSharedPeptides),
                 " </li>
-
                 <li>
                 Number of proteins only defined by unique peptides: ", 
                 ncol(rv$matAdj$matWithUniquePeptides), 

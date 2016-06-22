@@ -4,6 +4,7 @@
 
 \documentclass[12pt]{article}
 \usepackage{soul}
+\usepackage{url}
 \usepackage[utf8]{inputenc}
 
 \newcommand{\shellcmd}[1]{\\\indent\indent\texttt{\footnotesize\# #1}}
@@ -346,6 +347,8 @@ It is recommended to avoid special characters such as "$\sharp$", "@", "\$", "\%
 If the dataset describes proteins, each line should correspond to one and only one protein. 
 If the dataset describes peptides, each line should correspond to one and only one peptide. In addition, it is necessary to have a column that lists (separated by a ";") all the parent proteins of each peptide, as this piece of information is mandatory for the aggregation. It is also necessary that these parent proteins are describe by a unique ID (so as to avoid confusion between the proteins).
 
+As an example, please find the file "MinProt.txt" at this address \url{http://www.bioconductor.org/packages/release/bioc/vignettes/DAPAR/inst/doc/MinProt.txt}.
+
 
 \noindent \textbf{Import procedure}\\
 \noindent Several panels guide the user through the different steps of the procedure:
@@ -456,6 +459,14 @@ and \Rfunction{saveRDS()} (to export in MSnSet format).
 right-clicking on the plot. A contextual menu appears and let the user 
 choose either "Save image as" or "Copy image". In the latter case, he/she has 
 to paste the image in appropriate software.}
+
+\subsubsection{Demo mode}
+
+In order to facilitate first steps with Prostar, the "demo mode" menu allows 
+the user to access the datasets contained in the package \Biocpkg{DAPARdata}. 
+When the user chooses one of those datasets, it is automatically loaded in 
+\Biocpkg{Prostar} and ready to use.
+
 
 \subsubsection{Session log}\label{sec:sessionlog}
 

@@ -62,6 +62,11 @@ tags$head(
     tags$style(type="text/css", 
     paste("#sidebar_DiffAna4 { height:",heightSidebarPanel,"; }", sep="")),
     
+    
+    tags$style(type="text/css", 
+               paste("#chooseDatasetFromDAPARdata_wellPanel { height:",heightSidebarPanel,"; }", sep="")),
+    
+    
     tags$style(type="text/css", "#DS { padding-top:50px;"),
     tags$style(type="text/css", "#sidebar_dataExplorer { padding-top:50px;"),
     
@@ -195,11 +200,9 @@ navbarMenu("Dataset manager",
                     )
 
                     ,radioButtons("checkDataLogged", 
-                            "Check whether the data you want to analyze are 
-                                already logged or not. If not, they will be 
-                                automatically logged", 
+                            "Are your data already logged ?", 
                             width = widthWellPanel, 
-                            choices=c("yes", "no"), 
+                            choices=c("yes (they stay unchanged)" = "yes", "no (they wil be automatically logged)"="no"), 
                             selected="no")
                     ,br()
                     ,checkboxInput("replaceAllZeros", 
@@ -211,7 +214,7 @@ navbarMenu("Dataset manager",
         uiOutput("helpTextDataID"),
         radioButtons("autoID", width="500px",
             "If you choose the automatic ID, Prostar will build an index.", 
-            choices=c("Auto ID" = "Auto ID", "user ID" = "user ID")),
+            choices=c("Auto ID" = "Auto ID", "User ID" = "user ID")),
         conditionalPanel(
             condition = 'input.autoID == "user ID"',
             uiOutput("id"),
@@ -284,8 +287,8 @@ navbarMenu("Dataset manager",
                                           condition = "true",
                                           h3("Quick overview of the dataset"),
                                           uiOutput("overviewDemoDataset"),
-                                          tags$iframe(src="http://bioconductor.org/packages/release/data/experiment/vignettes/DAPARdata/inst/doc/UPSpep-prot25.pdf", 
-                                                      width="900", height="700")
+                                          uiOutput("showDatasetDoc")
+                                         
                                          # uiOutput("infoAboutDemoDataset")
                          )
              )),
