@@ -4169,6 +4169,7 @@ output$aggregationStats <- renderUI ({
     # print(length(union(colnames(rv$matAdj$matWithUniquePeptides), colnames(rv$matAdj$matWithSharedPeptides))))
     # print(length(intersect(colnames(rv$matAdj$matWithUniquePeptides), colnames(rv$matAdj$matWithSharedPeptides))))
     # 
+    res <- getProteinsStats(rv$matAdj$matWithUniquePeptides, rv$matAdj$matWithSharedPeptides)
     
     text <- paste("<ul style=\"list-style-type:disc;\">
                 <li>
@@ -4193,13 +4194,17 @@ output$aggregationStats <- renderUI ({
                 " </li>
                 <li>
                 Number of proteins only defined by unique peptides: ", 
-                ncol(rv$matAdj$matWithUniquePeptides), 
+                length(res$protOnlyUniquePep), 
                 "</li>
 
                 <li>
                 Number of proteins only defined by shared peptides:  ", 
-                ncol(rv$matAdj$matWithSharedPeptides)
-                - ncol(rv$matAdj$matWithUniquePeptides), 
+                length(res$protOnlySharedPep), 
+                "</li>
+
+                <li>
+                Number of proteins defined both by shared and unique peptides:  ", 
+                length(res$protMixPep), 
                 "</li>
 
                 </ul>" , sep="")
