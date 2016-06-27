@@ -1,3 +1,17 @@
+CHANGES IN VERSION 1.4.10
+-------------------------
+
+NEW FEATURES
+    * Import of .tsv files
+    * The name of the study appears now in the title of the datasets versions
+    * When the user exports his datasets, the name of the study is automatically suggested
+      in the text field
+
+BUG FIXES
+
+    * A bug when choosing the id for converting a text file into a MSnSet file has been fixed
+    
+    
 CHANGES IN VERSION 1.4.9 
 -------------------------
 

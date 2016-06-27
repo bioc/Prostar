@@ -3,6 +3,7 @@
 commandLogFile <- "cmdLog.R"
 logfilename <- "log.txt"
 gFileExtension <- list(txt = ".txt",
+                       tsv = ".tsv",
                         msnset = ".MSnset",
                         excel = ".xls",
                         zip = ".zip")

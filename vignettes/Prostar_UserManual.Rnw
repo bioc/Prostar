@@ -347,7 +347,7 @@ It is recommended to avoid special characters such as "$\sharp$", "@", "\$", "\%
 If the dataset describes proteins, each line should correspond to one and only one protein. 
 If the dataset describes peptides, each line should correspond to one and only one peptide. In addition, it is necessary to have a column that lists (separated by a ";") all the parent proteins of each peptide, as this piece of information is mandatory for the aggregation. It is also necessary that these parent proteins are describe by a unique ID (so as to avoid confusion between the proteins).
 
-As an example, please find the file "MinProt.txt" at this address \url{http://www.bioconductor.org/packages/release/bioc/vignettes/DAPAR/inst/doc/MinProt.txt}.
+As an example, please find at the following address a dataset abstract that can be inspired from: \url{http://www.bioconductor.org/packages/release/bioc/readmes/Prostar/README}. 
 
 
 \noindent \textbf{Import procedure}\\
@@ -465,7 +465,8 @@ to paste the image in appropriate software.}
 In order to facilitate first steps with Prostar, the "demo mode" menu allows 
 the user to access the datasets contained in the package \Biocpkg{DAPARdata}. 
 When the user chooses one of those datasets, it is automatically loaded in 
-\Biocpkg{Prostar} and ready to use.
+\Biocpkg{Prostar}. It can be used to easily test the various functionalities of
+\Biocpkg{Prostar}.
 
 
 \subsubsection{Session log}\label{sec:sessionlog}

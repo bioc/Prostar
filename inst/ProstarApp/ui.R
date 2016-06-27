@@ -185,9 +185,9 @@ navbarMenu("Dataset manager",
             tabPanel(width = widthWellPanel,
                     "1 - Select file",
                     value = "SelectFile2Import",
-                    fileInput("file1", "Data file", 
+                    fileInput("file1", "Data file (.txt, .csv, .tsv, .xls, .xlsx files)", 
                             multiple=FALSE, 
-                            accept=c(".txt", ".csv",".xls", ".xlsx")),
+                            accept=c(".txt", ".tsv", ".csv",".xls", ".xlsx")),
                             uiOutput("ManageXlsFiles"),
                     helpText("Hint : before importing quantification 
                                 file data, check the syntax of your text 
@@ -265,7 +265,8 @@ navbarMenu("Dataset manager",
             uiOutput("selectIDforExcelExport")
         ),
         br(),
-        textInput("nameExport", "Enter the name of the files to be created"),
+        uiOutput("chooseExportFilename"),
+       
         br(),
         downloadButton('downloadMSnSet', 'Download'),
         

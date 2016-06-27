@@ -8,6 +8,7 @@ library(data.table)
 library(reshape2)
 library(DT)
 library(MSnbase)
+library(XLConnect)
 
 
 # initialize data with colnames
@@ -641,7 +642,7 @@ loadObjectInMemoryFromConverter <- reactive({
     UpdateFilterWidgets()
 
     updateSelectInput(session, "datasets", 
-                    label = "Dataset versions",
+                    label = paste("Dataset versions of",rv$current.obj.name, sep=" "),
                     choices = names(rv$dataset),
                     selected = name)
 
@@ -704,6 +705,15 @@ output$chooseDataset <- renderUI({
 
 })
 
+
+
+output$chooseExportFilename <- renderUI({
+    textInput("nameExport", 
+              label = "Enter the name of the files to be created",
+              value = rv$current.obj.name)
+})
+
+
 observe({
     input$loadDemoDataset
     if (is.null(input$loadDemoDataset) || (input$loadDemoDataset == 0)) {return(NULL)}
@@ -712,8 +722,8 @@ observe({
             ClearMemory()
         data(list = input$demoDataset)
         rv$current.obj <- get(input$demoDataset)
-            #rv$current.obj.name <- DeleteFileExtension(input$file$name)
-            rv$typeOfDataset <- rv$current.obj@experimentData@other$typeOfData
+        rv$current.obj.name <- input$demoDataset
+        rv$typeOfDataset <- rv$current.obj@experimentData@other$typeOfData
             
             # writeToCommandLogFile(
             #     paste("current.obj <- readRDS('",
@@ -792,6 +802,7 @@ observe({
                     )
                     
                     updateSelectInput(session, "datasets", 
+                                      paste("Dataset versions of",rv$current.obj.name, sep=" "),
                                       choices = names(rv$dataset),
                                       selected = name)
                     UpdateLog(paste("Normalization : data normalized with the method",
@@ -889,7 +900,8 @@ observe({
     # 
     
     updateSelectInput(session, "datasets", 
-                        choices = names(rv$dataset),
+                      paste("Dataset versions of",rv$current.obj.name, sep=" "),
+                      choices = names(rv$dataset),
                         selected = name)
     UpdateLog(
         paste("Aggregation : peptides were aggregated into 
@@ -936,6 +948,7 @@ observe({
                 )
                 
                 updateSelectInput(session, "datasets", 
+                                  paste("Dataset versions of",rv$current.obj.name, sep=" "),
                                   choices = names(rv$dataset),
                                   selected = name)
                 UpdateLog(paste("Imputation with" ,
@@ -1336,6 +1349,7 @@ observe({
                 
                 fdr <- diffAnaComputeFDR(data, rv$seuilPVal, rv$seuilLogFC, m)
                 
+                
                 temp <- diffAnaSave(rv$dataset[[input$datasets]],
                                     data,
                                     input$diffAnaMethod,
@@ -1345,6 +1359,8 @@ observe({
                                     rv$seuilLogFC, 
                                     fdr,
                                     input$calibrationMethod)
+                print(colnames(exprs(rv$dataset[[input$datasets]])))
+                print(colnames(exprs(temp)))
                 
                 
                 #rv$typeOfDataset <- rv$current.obj@experimentData@other$typeOfData
@@ -1354,7 +1370,13 @@ observe({
                 
                 rv$dataset[[name]] <- temp
                 rv$current.obj <- temp
+                
+                print(colnames(exprs(rv$dataset[[name]])))
+                print(colnames(exprs(temp)))
+                print(colnames(exprs(rv$current.obj)))
+                
                 updateSelectInput(session, "datasets", 
+                                  paste("Dataset versions of",rv$current.obj.name, sep=" "),
                                   choices = names(rv$dataset),
                                   selected = name)
                 
@@ -1732,6 +1754,8 @@ output$id <- renderUI({
 #######################################
 observe({
     input$createMSnsetButton
+    input$idBox
+    input$autoID 
     if(is.null(input$createMSnsetButton) || (input$createMSnsetButton == 0)) 
         {return(NULL)}
     
@@ -1750,9 +1774,10 @@ observe({
                 indexForEData <- match(input$eData.box, colnames(rv$tab1))
                 indexForFData <- seq(1,ncol(rv$tab1))[-indexForEData]
                 
-                indexForIDBox <- match(input$idBox, colnames(rv$tab1))
-                if (is.na(indexForIDBox) || length(indexForIDBox) == 0) {
+                if (input$autoID == "Auto ID") {
                     indexForIDBox <- NULL}
+                else 
+                    {indexForIDBox <- match(input$idBox, colnames(rv$tab1))}
                 
                 metadata <- hot_to_r(input$hot)
                 logData <- (input$checkDataLogged == "no")
@@ -3640,12 +3665,13 @@ observe({
         {
             ClearMemory()
             ext <- GetExtension(input$file1$name)
-            if ((ext == "txt") || (ext == "csv") ){
+            if ((ext == "txt") || (ext == "csv") || (ext == "tsv") ){
                 rv$tab1 <- read.csv(input$file1$datapath, 
                                     header=TRUE, 
                                     sep="\t", 
                                     as.is=T)
             } else if ((ext == "xls") || (ext == "xlsx") ){
+                require(XLConnect)
                 file <- loadWorkbook(input$file1$datapath)
                 rv$tab1 <- readWorksheet(file, sheet = input$XLSsheets)
                 
@@ -3993,6 +4019,7 @@ observe({
                     
                     
                     updateSelectInput(session, "datasets", 
+                                      paste("Dataset versions of",rv$current.obj.name, sep=" "),
                                       choices = names(rv$dataset), selected = name)
                     txtFilterMV <- paste("Filtering :",
                                          GetFilterText(input$ChooseFilters, 
@@ -4159,16 +4186,7 @@ output$aggregationStats <- renderUI ({
         || is.null(rv$matAdj))
     {return(NULL)}
     if (is.null( rv$current.obj)){return(NULL)}
-   # matAdj <- ComputeAdjacencyMatrix()
-    
-    
-    # print(ncol(rv$matAdj$matWithSharedPeptides))
-    # print(ncol(rv$matAdj$matWithUniquePeptides))
-    # print(length(colnames(rv$matAdj$matWithSharedPeptides)))
-    # print(length(colnames(rv$matAdj$matWithUniquePeptides)))
-    # print(length(union(colnames(rv$matAdj$matWithUniquePeptides), colnames(rv$matAdj$matWithSharedPeptides))))
-    # print(length(intersect(colnames(rv$matAdj$matWithUniquePeptides), colnames(rv$matAdj$matWithSharedPeptides))))
-    # 
+   
     res <- getProteinsStats(rv$matAdj$matWithUniquePeptides, rv$matAdj$matWithSharedPeptides)
     
     text <- paste("<ul style=\"list-style-type:disc;\">
