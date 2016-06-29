@@ -652,21 +652,36 @@ loadObjectInMemoryFromConverter <- reactive({
 
 #---------------------------------------------------- 
 ClearMemory <- function(){
+    
+    
     obj2remove <- c(
     "rv$nameOfDataset",
+    "rv$current.obj",
+    "rv$current.obj.name",
+    "rv",
     "session",
     "input",
     "output")
     
     
-    rv$text.log <- list()
-    rv$tab1 <- NULL
-    rv$current.obj <- NULL
-    rv$dataset <- list()
+    # rv$text.log <- list()
+    # rv$tab1 <- NULL
+    # rv$current.obj <- NULL
+    # rv$dataset <- list()
     
     initializeProstar()
-    
+    rv$hot = port
+   # print(rv$hot)
     updateSelectInput(session, "datasets",  "", choices = "none")
+    updateRadioButtons(session,"typeOfData",selected = "peptide" )
+    updateRadioButtons(session, "checkDataLogged", selected="no")
+    updateRadioButtons(session, "autoID", selected = "Auto ID")
+    
+    updateSelectInput(session, "idBox", selected = NULL)
+    
+    updateSelectizeInput(session,"eData.box",choices = NULL, selected=NULL)
+    updateTextInput(session,"filenameToCreate",value= "")
+    
     #UpdateLog("Memory has been cleared","none")
     updateCheckboxInput(session, "replaceAllZeros",value = TRUE)
     updateRadioButtons(session,
@@ -738,7 +753,7 @@ observe({
                 , warning = function(w) {
                     shinyjs::info(conditionMessage(w))
                 }, error = function(e) {
-                    shinyjs::info(conditionMessage(e))
+                    shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
                 }, finally = {
                     #cleanup-code 
                 })
@@ -812,7 +827,7 @@ observe({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(info("Validate the normalization",":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -918,7 +933,7 @@ observe({
    , warning = function(w) {
        shinyjs::info(conditionMessage(w))
    }, error = function(e) {
-       shinyjs::info(conditionMessage(e))
+       shinyjs::info(paste("Validate the agregatino",":",conditionMessage(e), sep=" "))
    }, finally = {
        #cleanup-code 
    })
@@ -958,12 +973,11 @@ observe({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste("Validate the imputation",":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
-        
-        
+
     
     })
 })
@@ -1014,7 +1028,7 @@ output$showFDR <- renderText({
             , warning = function(w) {
                 shinyjs::info("Warning ! There is no data selected ! Please modify the p-value threshold.")
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste("Show FDR",":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -1165,7 +1179,7 @@ output$calibrationPlot <- renderPlot({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste("Calibration plot",":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -1240,7 +1254,7 @@ output$calibrationPlotAll <- renderPlot({
         , warning = function(w) {
             shinyjs::info(conditionMessage(w))
         }, error = function(e) {
-            shinyjs::info(conditionMessage(e))
+            shinyjs::info(paste("Calibration Plot All methods",":",conditionMessage(e), sep=" "))
         }, finally = {
             #cleanup-code 
         })
@@ -1371,9 +1385,6 @@ observe({
                 rv$dataset[[name]] <- temp
                 rv$current.obj <- temp
                 
-                print(colnames(exprs(rv$dataset[[name]])))
-                print(colnames(exprs(temp)))
-                print(colnames(exprs(rv$current.obj)))
                 
                 updateSelectInput(session, "datasets", 
                                   paste("Dataset versions of",rv$current.obj.name, sep=" "),
@@ -1424,7 +1435,7 @@ observe({
             #    shinyjs::info(conditionMessage(w))
             #}
             , error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste("Valid Diff Ana",":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -1460,7 +1471,7 @@ output$viewProcessingData <- DT::renderDataTable({
         , warning = function(w) {
             shinyjs::info(conditionMessage(w))
         }, error = function(e) {
-            shinyjs::info(conditionMessage(e))
+            shinyjs::info(paste("view processing data",":",conditionMessage(e), sep=" "))
         }, finally = {
             #cleanup-code 
         })
@@ -1491,7 +1502,7 @@ output$viewpData <- DT::renderDataTable({
         , warning = function(w) {
             shinyjs::info(conditionMessage(w))
         }, error = function(e) {
-            shinyjs::info(conditionMessage(e))
+            shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
         }, finally = {
             #cleanup-code 
         })
@@ -1519,7 +1530,7 @@ output$viewfData <- DT::renderDataTable({
         , warning = function(w) {
             shinyjs::info(conditionMessage(w))
         }, error = function(e) {
-            shinyjs::info(conditionMessage(e))
+            shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
         }, finally = {
             #cleanup-code 
         })
@@ -1549,7 +1560,7 @@ output$viewExprsMissValues <- DT::renderDataTable({
         , warning = function(w) {
             shinyjs::info(conditionMessage(w))
         }, error = function(e) {
-            shinyjs::info(conditionMessage(e))
+            shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
         }, finally = {
             #cleanup-code 
         })
@@ -1754,8 +1765,9 @@ output$id <- renderUI({
 #######################################
 observe({
     input$createMSnsetButton
-    input$idBox
-    input$autoID 
+   # input$idBox
+    #input$autoID 
+   # input$hot
     if(is.null(input$createMSnsetButton) || (input$createMSnsetButton == 0)) 
         {return(NULL)}
     
@@ -1765,7 +1777,7 @@ observe({
         result = tryCatch(
             {
                 
-                input$hot
+               # input$hot
                 input$filenameToCreate
                 # input$file1
                 #inFile1 <- input$file1
@@ -1781,6 +1793,8 @@ observe({
                 
                 metadata <- hot_to_r(input$hot)
                 logData <- (input$checkDataLogged == "no")
+                
+                
                 
                 rv$current.obj <- createMSnset(rv$tab1, 
                                                metadata, 
@@ -1800,7 +1814,7 @@ observe({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste("CreateMSnSet",":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -1959,6 +1973,8 @@ output$logSession <- DT::renderDataTable({
 
 #########################################################
 output$References <- renderText({
+    
+    
     HTML("<strong><font size=\"5\">HELP</font></strong>
         <br><hr color:\"blue\"><br>
 
@@ -1966,6 +1982,8 @@ output$References <- renderText({
         <a href=\"https://www.bioconductor.org/packages/release/bioc/vignettes/Prostar/inst/doc/Prostar_UserManual.pdf\"
                                 title=\"here\" target=\"_blank\">here</a>
         <br><br>
+
+        
 
         <strong><font size=\"4\">Tutorial:</font></strong>
         <a href=\"http://bioconductor.org/packages/release/bioc/vignettes/Prostar/inst/doc/Prostar_Tutorial.pdf\"
@@ -2101,7 +2119,7 @@ output$overviewDemoDataset <- renderUI({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -2159,7 +2177,7 @@ output$overview <- renderUI({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -2282,7 +2300,7 @@ output$GlobalPieChart <- renderPlot({
            #     shinyjs::info(conditionMessage(w))
             #}
            , error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -2333,7 +2351,7 @@ output$histoMV_Image_DS <- renderPlot({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -2351,7 +2369,7 @@ output$histoMV_Image <- renderPlot({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -2374,7 +2392,7 @@ wrapper.mvPerLinesHisto(rv$current.obj,
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -2395,7 +2413,7 @@ output$histo.missvalues.per.lines.per.conditions_Image <- renderPlot({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -2441,7 +2459,7 @@ output$histo.missvalues.per.lines_DS <- renderPlot({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -2466,7 +2484,7 @@ output$histo.missvalues.per.lines.per.conditions_DS <- renderPlot({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -2521,7 +2539,7 @@ output$showImageNA <- renderPlot({
                 , warning = function(w) {
                     shinyjs::info(conditionMessage(w))
                 }, error = function(e) {
-                    shinyjs::info(conditionMessage(e))
+                    shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
                 }, finally = {
                     #cleanup-code 
                 })
@@ -2676,7 +2694,7 @@ output$viewBoxPlot_DS <- renderPlot({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -2726,7 +2744,7 @@ output$viewDensityplot_DS <- renderPlot({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -2771,7 +2789,7 @@ output$viewBoxPlotNorm <- renderPlot({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -2842,7 +2860,7 @@ output$viewDensityplotNorm<- renderPlot({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -2916,7 +2934,7 @@ output$viewComparisonNorm<- renderPlot({
             #   shinyjs::info(conditionMessage(w))
             #}
             , error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -2943,7 +2961,7 @@ output$viewDistVariance <- renderPlot({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -2971,7 +2989,7 @@ output$corrMatrix <- renderPlot({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -3007,7 +3025,7 @@ output$heatmap <- renderPlot({
                 , warning = function(w) {
                     shinyjs::info(conditionMessage(w))
                 }, error = function(e) {
-                    shinyjs::info(conditionMessage(e))
+                    shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
                 }, finally = {
                     #cleanup-code 
                 })
@@ -3220,7 +3238,7 @@ output$nbSelectedItems <- renderUI({
         , warning = function(w) {
             shinyjs::info(conditionMessage(w))
         }, error = function(e) {
-            shinyjs::info(conditionMessage(e))
+            shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
         }, finally = {
             #cleanup-code 
         })
@@ -3288,7 +3306,7 @@ output$nbSelectedItemsStep3 <- renderUI({
         , warning = function(w) {
             shinyjs::info(conditionMessage(w))
         }, error = function(e) {
-            shinyjs::info(conditionMessage(e))
+            shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
         }, finally = {
             #cleanup-code 
         })
@@ -3371,7 +3389,7 @@ output$volcanoplot <- renderPlot({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -3422,7 +3440,7 @@ output$volcanoplotStep3 <- renderPlot({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -3568,7 +3586,7 @@ output$limmaplot <- DT::renderDataTable({
         , warning = function(w) {
             shinyjs::info(conditionMessage(w))
         }, error = function(e) {
-            shinyjs::info(conditionMessage(e))
+            shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
         }, finally = {
             #cleanup-code 
         })
@@ -3601,7 +3619,7 @@ output$viewNAbyMean <- renderPlot({
                 , warning = function(w) {
                     shinyjs::info(conditionMessage(w))
                 }, error = function(e) {
-                    shinyjs::info(conditionMessage(e))
+                    shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
                 }, finally = {
                     #cleanup-code 
                 })
@@ -3651,7 +3669,7 @@ saveMSnset <- function(name, fileExt, obj ){
     return(obj)
 }
 
-############ Read text file ######################
+############ Read text file to be imported ######################
 observe({
     input$file1
     input$XLSsheets
@@ -3680,7 +3698,7 @@ observe({
         , warning = function(w) {
             shinyjs::info(conditionMessage(w))
         }, error = function(e) {
-            shinyjs::info(conditionMessage(e))
+            shinyjs::info(paste("Read text file to convert",":",conditionMessage(e), sep=" "))
         }, finally = {
             #cleanup-code 
         })
@@ -3764,7 +3782,7 @@ GetMaxValueThresholdFilter <- function(){
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -3849,7 +3867,7 @@ observe({
     #    shinyjs::info(conditionMessage(w))
     #}
     , error = function(e) {
-        shinyjs::info(conditionMessage(e))
+        shinyjs::info(paste("Perform missing values filtering",":",conditionMessage(e), sep=" "))
     }, finally = {
         #cleanup-code 
     })
@@ -3971,7 +3989,7 @@ observe({
             #    shinyjs::info(conditionMessage(w))
            # }
         , error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste("Perform contaminants filtering",":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -4035,7 +4053,7 @@ observe({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste("Validate filters",":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -4111,7 +4129,7 @@ observe({
         #    shinyjs::info(conditionMessage(w))
         #}
         , error = function(e) {
-            shinyjs::info(conditionMessage(e))
+            shinyjs::info(paste("Build adjacency matrix",":",conditionMessage(e), sep=" "))
         }, finally = {
             #cleanup-code 
             })
@@ -4245,7 +4263,7 @@ output$aggregationPlotShared <- renderPlot({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -4265,7 +4283,7 @@ output$aggregationPlotUnique <- renderPlot({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -4297,7 +4315,7 @@ observe({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste(match.call()[[1]],":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
@@ -4572,7 +4590,7 @@ observe({
             , warning = function(w) {
                 print(w)
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste("Perform missing values imputation",":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code
                 
@@ -4620,7 +4638,7 @@ observe({
             , warning = function(w) {
                 shinyjs::info(conditionMessage(w))
             }, error = function(e) {
-                shinyjs::info(conditionMessage(e))
+                shinyjs::info(paste("Perform normalization",":",conditionMessage(e), sep=" "))
             }, finally = {
                 #cleanup-code 
             })
