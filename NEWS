@@ -5,6 +5,15 @@ NEW FEATURES
 
 BUG FIXES
 
+    * Some minor modifications have been written to avoid problems with the UI due to updates in some packages.
+      
+      CHANGES IN VERSION 1.4.11
+-------------------------
+
+NEW FEATURES
+
+BUG FIXES
+
     * If the user convert a first text file and then wants to convert another one, the
       widgets were not all updated and this caused a crash when saving to MSnSet.This bug has been fixed.
     

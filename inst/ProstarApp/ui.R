@@ -123,7 +123,8 @@ sidebarPanelWidth()
 ,uiOutput("disableAggregationTool")
 ,navbarPage(
     id = "navPage",
-    absolutePanel(id  = "#AbsolutePanel",
+    absolutePanel(
+        #id  = "#AbsolutePanel",
                 top = 10,
                 right = 300,
                 # bottom = 600,
@@ -153,11 +154,11 @@ sidebarPanelWidth()
                     ),
     
 navbarMenu("Dataset manager",
-           id = "datasetManagerMenu"
-    ,tabPanel("Open MSnset file",
+           #id = "datasetManagerMenu",
+    tabPanel("Open MSnset file",
         #title="Open a MSnset file",
         #icon = icon("file"),
-        id = "openMSnSet",
+        #id = "openMSnSet",
         value = "open",
         sidebarCustom(),
         splitLayout(cellWidths = c(widthLeftPanel, widthRightPanel),
@@ -177,12 +178,14 @@ navbarMenu("Dataset manager",
     tabPanel("Convert data",
         icon = icon("download"),
         value = "import",
-        width = widthWellPanel,
+        #width = widthWellPanel,
         helpText("These steps allow to create a MSnSet file 
             from a tabulated-text file."),
-        tabsetPanel(id = "tabImport",
-            width = widthWellPanel,
-            tabPanel(width = widthWellPanel,
+        tabsetPanel(
+            #id = "tabImport",
+            #width = widthWellPanel,
+            tabPanel(
+                #width = widthWellPanel,
                     "1 - Select file",
                     value = "SelectFile2Import",
                     fileInput("file1", "Data file (.txt, .csv, .tsv, .xls, .xlsx files)", 
@@ -232,7 +235,7 @@ navbarMenu("Dataset manager",
     
     tabPanel( "4 - Samples metadata",
             value = "Import2",
-            width = widthWellPanel,
+            #width = widthWellPanel,
             helpText("Warning : it is mandatory that the column 
             \"Label\" is filled."),
             br(),
@@ -277,7 +280,7 @@ navbarMenu("Dataset manager",
     ),
 
     tabPanel("Demo mode",
-             id = "demo",
+             #id = "demo",
              sidebarCustom(),
              splitLayout(cellWidths = c(widthLeftPanel, widthRightPanel),
                          wellPanel(id = "chooseDatasetFromDAPARdata_wellPanel"
@@ -329,9 +332,8 @@ tabPanel("Descriptive statistics",
                 uiOutput("overviewNewData")
             ),
 
-            tabPanel(
-                id = "DS_tabOverviewMV",
-                title = "Miss. values",
+            tabPanel( "Miss. values",
+                #id = "DS_tabOverviewMV",
                 value = "DS_tabOverviewMV",
                 
                 helpText("Those bargraph plots display some information to
@@ -348,8 +350,8 @@ tabPanel("Descriptive statistics",
             ),
 
             #-------------------------------------------------------------
-            tabPanel(title="Data explorer",
-                id = "DS_DataExplorer",
+            tabPanel("Data explorer",
+                #id = "DS_DataExplorer",
                 sidebarCustom(),
                 splitLayout(cellWidths = c(widthLeftPanel, widthRightPanel),
                     wellPanel(id = "sidebar_dataExplorer",
@@ -362,7 +364,7 @@ tabPanel("Descriptive statistics",
                 )
             ),
 
-            tabPanel(title="Corr. matrix",
+            tabPanel("Corr. matrix",
                 value="DS_tabCorrMatrix",
                 sidebarCustom(),
                 
@@ -380,7 +382,7 @@ tabPanel("Descriptive statistics",
                 )
             ),
 
-            tabPanel(title="Heatmap",
+            tabPanel("Heatmap",
                 value="DS_tabHeatmap",
                 sidebarCustom(),
                 splitLayout(cellWidths = c(widthLeftPanel, widthRightPanel),
@@ -401,7 +403,7 @@ tabPanel("Descriptive statistics",
             ),
 
             #-----------------------------------------------------------
-            tabPanel(title = "Boxplot",
+            tabPanel("Boxplot",
                 value="DS_tabBoxplot",
                 sidebarCustom(),
                 splitLayout(cellWidths = c(widthLeftPanel, widthRightPanel),
@@ -418,7 +420,7 @@ tabPanel("Descriptive statistics",
 
 
             #-----------------------------------------------------------
-            tabPanel(title = "Densityplot",
+            tabPanel("Densityplot",
                 value="DS_tabDensityplot",
                 sidebarCustom(),
                 splitLayout(cellWidths = c(widthLeftPanel, widthRightPanel),
@@ -435,7 +437,7 @@ tabPanel("Descriptive statistics",
             ),
 
             #-----------------------------------------------------------
-            tabPanel(title="Variance distr.", 
+            tabPanel("Variance distr.", 
                 value="DS_tabDistVar",
                 p("This graphics shows, for each condition, the distribution 
                     of the variance of the log-intensities."),
@@ -448,8 +450,8 @@ tabPanel("Descriptive statistics",
             
 #### NAVBAR MENU - DATA PROCESSING ################################
 navbarMenu("Data processing",
-           id = "dataProcessingNvaMenu"
-    ,tabPanel("Filter data",
+           #id = "dataProcessingNvaMenu",
+    tabPanel("Filter data",
     icon = icon("download"),
     tabsetPanel(id = "DP_Filtering_tabSetPanel"
         ,tabPanel( "1 - Missing values",
@@ -595,9 +597,9 @@ tabPanel("Aggregation",
          id = "Aggregation",
          value="Aggregation",
              tabsetPanel(
-        title = "agreagationTabsetPanel",
+        "agreagationTabsetPanel",
         id = "agreagationTabsetPanel",
-        tabPanel(title = "1 - Aggregate peptides",
+        tabPanel("1 - Aggregate peptides",
             value = "aggregation",
             sidebarCustom(),
             splitLayout(cellWidths = c(widthLeftPanel, widthRightPanel),
@@ -608,7 +610,7 @@ tabPanel("Aggregation",
             )
             )
         ),
-tabPanel(title = "2 - Configure protein dataset",
+tabPanel("2 - Configure protein dataset",
     value = "configureProteinDataset",
     uiOutput("Aggregation_Step2")
     )
@@ -619,9 +621,9 @@ tabPanel(title = "2 - Configure protein dataset",
 
 tabPanel("Differential analysis",
     tabsetPanel(
-        title = "diffAnalysis_tabSetPanel",
+        "diffAnalysis_tabSetPanel",
         id = "diffAnalysis_tabSetPanel",
-        tabPanel(title = "1 - Volcano plot",
+        tabPanel("1 - Volcano plot",
             value = "DiffAnalysis_Volcanoplot",
             sidebarCustom(),
             splitLayout(cellWidths = c(widthLeftPanel, widthRightPanel),
@@ -637,7 +639,7 @@ tabPanel("Differential analysis",
                 )
             )
         ),
-        tabPanel(title = "2 - p-value calibration",
+        tabPanel("2 - p-value calibration",
             value = "DiffAnalysis_Calibrate",
             sidebarCustom(),
             splitLayout(cellWidths = c(widthLeftPanel, widthRightPanel),
@@ -657,7 +659,7 @@ tabPanel("Differential analysis",
                 )
             )
         ),
-        tabPanel(title = "3 - FDR",
+        tabPanel("3 - FDR",
             id = "DiffAnalysis_viewFDR",
             value = "DiffAnalysis_viewFDR",
             sidebarCustom(),
@@ -682,7 +684,7 @@ tabPanel("Differential analysis",
                 )
             )
         ), # end tabPanel(title = "3 - Visualize FDR"
-        tabPanel(title = "4 - Validate & save",
+        tabPanel("4 - Validate & save",
                  id = "panelDiffAnaSave",
             value = "DiffAnalysis_ValidateAndSave",
             sidebarCustom(),
