@@ -9,6 +9,7 @@ library(reshape2)
 library(DT)
 library(MSnbase)
 library(openxlsx)
+library(sm)
 
 
 
