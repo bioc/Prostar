@@ -9,6 +9,7 @@ library(rhandsontable)
 library(data.table)
 library(shinyjs)
 library(shinyAce)
+library(sm)
 
 
 heightSidebarPanel <- "600px"

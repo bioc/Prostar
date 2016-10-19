@@ -9,9 +9,8 @@ library(reshape2)
 library(DT)
 library(MSnbase)
 library(openxlsx)
-library(sm)
 
-
+###
 
 # initialize data with colnames
 df <- data.frame(matrix(c("0","0"), 1, 2))
@@ -650,7 +649,7 @@ ClearMemory <- function(){
     initializeProstar()
     rv$hot = port
     rv$text.log <- data.frame(Date="", Dataset="", History="", stringsAsFactors=F)
-    rv$commandLog <- ""
+    #rv$commandLog <- ""
     updateSelectInput(session, "datasets",  "Dataset versions", choices = "none")
     updateRadioButtons(session,"typeOfData",selected = "peptide" )
     updateRadioButtons(session, "checkDataLogged", selected="no")
@@ -712,22 +711,22 @@ output$chooseExportFilename <- renderUI({
 
 observeEvent(input$loadDemoDataset,{
     
-    #if (is.null(input$loadDemoDataset) || (input$loadDemoDataset == 0)) {return(NULL)}
-    
-    isolate({
+   # isolate({
             ClearMemory()
         data(list = input$demoDataset)
         rv$current.obj <- get(input$demoDataset)
         rv$current.obj.name <- input$demoDataset
         rv$typeOfDataset <- rv$current.obj@experimentData@other$typeOfData
             
-            writeToCommandLogFile("library(DAPARdata)")
-            writeToCommandLogFile(paste("data(",input$demoDataset,")", sep=""))
-            writeToCommandLogFile(paste("current.obj <- ",input$demoDataset, sep=""))
             
             result = tryCatch(
                 {
+                    
+                    writeToCommandLogFile("library(DAPARdata)")
+                    writeToCommandLogFile(paste("data(",input$demoDataset,")", sep=""))
+                    writeToCommandLogFile(paste("current.obj <- ",input$demoDataset, sep=""))
                     loadObjectInMemoryFromConverter()
+                    
                 }
                 , warning = function(w) {
                     shinyjs::info(conditionMessage(w))
@@ -737,7 +736,7 @@ observeEvent(input$loadDemoDataset,{
                     #cleanup-code 
                 })
 
-    })
+   # })
     
 })
 
@@ -1281,6 +1280,7 @@ output$viewExprs <- DT::renderDataTable({
             #                              valueColumns = 4,
             # backgroundColor = styleInterval( 0, c('orange','white'))
             #                            )
+            #%>% hot_validate_numeric(col = 1, min = 10, max = 100, exclude = 40,allowInvalid = TRUE)
             return(dat)
 
    
@@ -1865,7 +1865,6 @@ observeEvent(input$createMSnsetButton,{
 output$eData <- renderUI({
     input$file1
     rv$tab1
-    #if (is.null(input$file1)) {return(NULL)  }
     if (is.null(rv$tab1)) {return(NULL)  }
     
     choices <- colnames(rv$tab1)
@@ -2063,10 +2062,7 @@ output$References <- renderText({
 
         <strong><font size=\"4\">References:</font></strong>
         <ul>
-        <li> S. Wieczorek, F. Combes, C. Lazar, Q. Giai-Gianetto, L. Gatto, 
-        A. Dorffer, A.-M. Hesse, Y. Coute, M. Ferro, C. Bruley, T. Burger. 
-        \"DAPAR & ProStaR: software to perform statistical analyses in 
-        quantitative discovery proteomics\", <i>Bioinformatics</i>, 2016
+        <li> S. Wieczorek, F. Combes, C. Lazar, Q. Giai-Gianetto, L. Gatto, A. Dorffer, A.-M. Hesse, Y. Coute, M. Ferro, C. Bruley, T. Burger. \"DAPAR & ProStaR: software to perform statistical analyses in quantitative discovery proteomics\", <i>Bioinformatics</i>, 2016
         </li>
         <li> C. Lazar, L. Gatto, M. Ferro, C. Bruley, T. Burger. Accounting 
         for the multiple natures of missing values in label-free quantitative 
@@ -2141,6 +2137,7 @@ output$overviewDemoDataset <- renderUI({
                 
                 nb.empty.lines <- sum(apply(
                     is.na(as.matrix(Biobase::exprs(rv$current.obj))), 1, all))
+                h3("Quick overview of the dataset")
                 tags$ul(
                     tags$li(paste("There are", dim(Biobase::exprs(rv$current.obj))[2], 
                                   " samples in your data.", sep=" ")),
@@ -3495,7 +3492,7 @@ output$aboutText <- renderUI({
     text <- paste("<strong>To cite DAPAR and ProStaR software:</strong><br> 
 S. Wieczorek, F. Combes, C. Lazar, Q. Giai-Gianetto, L. Gatto, 
         A. Dorffer, A.-M. Hesse, Y. Coute, M. Ferro, C. Bruley, T. Burger. 
-                  <i>\"DAPAR & ProStaR: software to perform statistical analyses in <br>
+                  <i>\"DAPAR & ProStaR: software to perform statistical analyses in 
                   quantitative discovery proteomics\"</i>, <i>Bioinformatics</i>, 2016
                   
 <br><br><br>
@@ -3509,7 +3506,7 @@ It is composed of two distinct R packages : <br>",
 "<ul style=\"list-style-type:disc;\">
 <li>
 <a href=\"http://www.bioconductor.org/packages/release/bioc/html/Prostar.html\"
-title=\"here\" target=\"_blank\">Prostar</a> package (version ",
+title=\"here\" target=\"_blank\">Prostar</a> (version ",
 ProstarVersion, "): the web based graphical user interface to DAPAR 
 </li>
 <li>
