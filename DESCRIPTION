@@ -1,7 +1,7 @@
 Package: Prostar
 Type: Package
 Title: Provides a GUI for DAPAR
-Version: 1.43.1
+Version: 1.44.0
 Date: 2026-04-14
 Authors@R: c(
     person("Thomas", "Burger", email = "thomas.burger@cea.fr", 
